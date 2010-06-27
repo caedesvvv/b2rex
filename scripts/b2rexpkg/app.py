@@ -9,7 +9,7 @@ from b2rexpkg.exporter import Exporter
 from b2rexpkg.settings import ExportSettings
 
 from ogredotscene import Screen, HorizontalLayout
-from ogredotscene import NumberView, Widget
+from ogredotscene import NumberView, Widget, CheckBox
 from ogredotscene import VerticalLayout, Action, QuitButton
 from ogredotscene import StringButton, Label, Button, Box
 from ogredotscene import Selectable, SelectableLabel
@@ -24,30 +24,48 @@ class RealxtendExporterApplication(object):
         self.screen = Screen()
         self.exporter = Exporter()
         self.exportSettings = ExportSettings()
-        vLayout = VerticalLayout()
-        buttonLayout = HorizontalLayout()
-        self.buttonLayout = buttonLayout
-        self.addButton('Connect', buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
-        self.addButton('Export', buttonLayout, 'Export to disk')
-        self.addButton('Quit', buttonLayout, 'Quit the exporter')
+	self.settings_visible = False
+        self.region_uuid = ''
+	self.regionLayout = None
+	self.createGui()
+        self.addStatus("b2rex started")
+    def createGui(self):
+        self.vLayout = VerticalLayout()
+        self.buttonLayout = HorizontalLayout()
+        self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
+        self.addButton('Export', self.buttonLayout, 'Export to disk')
+        self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
+        settingsButton = CheckBox(RealxtendExporterApplication.ToggleSettingsAction(self),
+			          self.settings_visible,
+				  'Settings',
+				  [100, 20],
+				  tooltip='Show Settings')
+        self.buttonLayout.addWidget(settingsButton, 'SettingsButton')
+        self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
+        self.screen.addWidget(Box(self.vLayout, 'realXtend exporter'), "layout")
 
-        vLayout.addWidget(buttonLayout, 'buttonPanel')
-        self.screen.addWidget(Box(vLayout, 'realXtend exporter'), "layout")
-        self.addSettingsButton('pack', vLayout, 'name for the main world files')
-        self.addSettingsButton('path', vLayout, 'path to export to')
-        self.addSettingsButton('server_url', vLayout, 'server login url')
+    def showSettings(self):
+        self.settingsLayout = VerticalLayout()
+        self.vLayout.addWidget(self.settingsLayout, 'settingsLayout')
+        self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
+        self.addSettingsButton('path', self.settingsLayout, 'path to export to')
+        self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
         posControls = HorizontalLayout()
-        vLayout.addWidget(posControls, 'posControls')
+        self.settingsLayout.addWidget(posControls, 'posControls')
         posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the x axis.'), 'locX')
         posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the y axis.'), 'locY')
         posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the z axis.'), 'locZ')
-        self.region_uuid = ''
-	self.regionLayout = None
-        self.addStatus("status")
-        self.vLayout = vLayout
+
+    def toggleSettings(self):
+        if self.settings_visible:
+            self.vLayout.removeWidget('settingsLayout')
+            self.settings_visible = False
+        else:
+            self.showSettings()
+            self.settings_visible = True
     def setRegion(self, region_uuid):
         if not self.region_uuid:
             # setting for the first time
@@ -111,7 +129,7 @@ class RealxtendExporterApplication(object):
                 self.connect()
 	    except:
                 traceback.print_exc()
-                self.app.addStatus("Error: couldnt connect", ERROR)
+                self.app.addStatus("Error: couldnt connect. Check your settings to see they are ok", ERROR)
                 return False
         def connect(self):
             base_url = self.app.exportSettings.server_url
@@ -122,7 +140,7 @@ class RealxtendExporterApplication(object):
             try:
                 regions = self.app.exporter.gridinfo.getRegions()
             except:
-                self.app.addStatus("Error: couldnt connect", ERROR)
+                self.app.addStatus("Error: couldnt connect to " + base_url, ERROR)
                 return
             vLayout = VerticalLayout()
 	    self.app.regionLayout = vLayout
@@ -142,6 +160,11 @@ class RealxtendExporterApplication(object):
                 vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
             self.app.addStatus("Connected to " + griddata['gridnick'])
             return
+    class ToggleSettingsAction(Action):
+        def __init__(self, app):
+            self.app = app
+        def execute(self):
+            self.app.toggleSettings()
     class ExportUploadAction(Action):
         def __init__(self, app):
             self.app = app
