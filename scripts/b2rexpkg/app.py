@@ -269,6 +269,7 @@ class RealxtendExporterApplication(Exporter):
         """
         def __init__(self, app):
             self.app = app
+
         def execute(self):
             try:
                 self.app.connectAction()
@@ -283,6 +284,7 @@ class RealxtendExporterApplication(Exporter):
         """
         def __init__(self, app):
             self.app = app
+
         def execute(self):
             self.app.toggleSettings()
 
@@ -292,6 +294,7 @@ class RealxtendExporterApplication(Exporter):
         """
         def __init__(self, app):
             self.app = app
+
         def execute(self):
             exportAction = RealxtendExporterApplication.ExportAction(self.app)
             uploadAction = RealxtendExporterApplication.UploadAction(self.app)
@@ -306,6 +309,7 @@ class RealxtendExporterApplication(Exporter):
         def __init__(self, app):
             self.app = app
             return
+
         def execute(self):
             try:
                 self.app.exportAction()
@@ -320,6 +324,7 @@ class RealxtendExporterApplication(Exporter):
         """
         def __init__(self, exportSettings):
             self.app = exportSettings
+
         def execute(self):
             try:
                 self.app.uploadAction()
@@ -334,6 +339,7 @@ class RealxtendExporterApplication(Exporter):
         """
         def __init__(self, app):
             self.app = app
+
         def execute(self):
             try:
                 self.app.clearAction()
