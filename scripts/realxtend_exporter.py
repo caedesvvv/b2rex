@@ -15,9 +15,9 @@ __bpydoc__ = "Please see the external documentation that comes with the script."
 
 import b2rexpkg
 
-from b2rexpkg.app import RealextendExporterApplication
+from b2rexpkg.app import RealxtendExporterApplication
 
 if (__name__ == "__main__"):
-    application = RealextendExporterApplication()
+    application = RealxtendExporterApplication()
     application.go()
 

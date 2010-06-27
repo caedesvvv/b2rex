@@ -1,4 +1,5 @@
 import os
+import traceback
 import b2rexpkg
 from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 
@@ -13,7 +14,11 @@ from ogredotscene import VerticalLayout, Action, QuitButton
 from ogredotscene import StringButton, Label, Button, Box
 from ogredotscene import Selectable, SelectableLabel
 
-class RealextendExporterApplication(object):
+ERROR = 0
+OK = 1
+IMMEDIATE = 2
+
+class RealxtendExporterApplication(object):
     def __init__(self):
         self.buttons = {}
         self.screen = Screen()
@@ -31,30 +36,42 @@ class RealextendExporterApplication(object):
         self.addSettingsButton('path', vLayout)
         self.addSettingsButton('server_url', vLayout)
         self.region_uuid = ''
+	self.regionLayout = None
         self.addStatus("status")
         self.vLayout = vLayout
     def setRegion(self, region_uuid):
+        if not self.region_uuid:
+            # setting for the first time
+            hLayout = HorizontalLayout()
+            self.regionLayout.addWidget(hLayout, "regionButtons")
+            self.addButton("ExportUpload", hLayout)
+            self.addButton("Upload", hLayout)
+            self.addButton("Clear", hLayout)
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
-    def addStatus(self, text):
+    def addStatus(self, text, level = OK):
         self.screen.addWidget(Box(Label(text), 'status'), 'b2rex initialized')
+        if level in [ERROR, IMMEDIATE]:
+            # Force a redraw
+            Blender.Draw.Draw()
+        else:
+            Blender.Draw.Redraw(1)
     def addSettingsButton(self, button_name, layout):
         val = getattr(self.exportSettings, button_name)
         self.buttons[button_name] = StringButton(val,
-                                    RealextendExporterApplication.ChangeSettingAction(self,
+                                    RealxtendExporterApplication.ChangeSettingAction(self,
                                                                                      button_name),
                                                  button_name+": ", [200, 20],"extra")
         layout.addWidget(self.buttons[button_name], 'buttonPanelButton' + button_name)
 
     def addButton(self, button_name, layout):
-        action = getattr(RealextendExporterApplication, button_name + 'Action')
+        action = getattr(RealxtendExporterApplication, button_name + 'Action')
         return layout.addWidget(Button(action(self),
                            button_name, [100, 20], button_name),
                            button_name + 'Button')
 
     def go(self):
         self.screen.activate()
-        return
     def packTo(self, from_path, to_zip):
         import zipfile
         zfile = zipfile.ZipFile(to_zip, "w", zipfile.ZIP_DEFLATED)
@@ -67,63 +84,83 @@ class RealextendExporterApplication(object):
         def __init__(self, app, name):
             self.app = app
             self.name = name
-            return
         def execute(self):
-            print "change setting"
             setattr(self.app.exportSettings, self.name,
                     self.app.buttons[self.name].string.val)
-            return
     class QuitAction(Action):
-        def __init__(self, exportSettings):
-            self.settings = exportSettings.exportSettings
-            return
+        def __init__(self, app):
+            self.settings = app.exportSettings
         def execute(self):
             import Blender
             self.settings.save()
             Blender.Draw.Exit()
-            return
     class ConnectAction(Action):
-        def __init__(self, exportSettings):
-            self.settings = exportSettings
-            return
+        def __init__(self, app):
+            self.app = app
         def execute(self):
-            base_url = self.settings.exportSettings.server_url
-            print "connect!!", base_url
-            self.settings.exporter.connect(str(base_url))
-            regions = self.settings.exporter.gridinfo.getRegions()
+            try:
+                self.connect()
+	    except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt connect", ERROR)
+                return False
+        def connect(self):
+            base_url = self.app.exportSettings.server_url
+            self.app.addStatus("Connecting to " + base_url, IMMEDIATE)
+            self.app.exporter.connect(base_url)
+            self.app.region_uuid = ''
+	    self.app.regionLayout = None
+            try:
+                regions = self.app.exporter.gridinfo.getRegions()
+            except:
+                self.app.addStatus("Error: couldnt connect", ERROR)
+                return
             vLayout = VerticalLayout()
-            gridinfo = self.settings.exporter.gridinfo
+	    self.app.regionLayout = vLayout
+            gridinfo = self.app.exporter.gridinfo
             griddata = gridinfo.getGridInfo()
             #for key in griddata:
                 #    vLayout.addWidget(Label(key + ": " + griddata[key]), 'scene_key_'+key)
                 #print key
             title = griddata['gridname'] + ' (' + griddata['mode'] + ')'
             vLayout.addWidget(Label(title), 'scene_key_title')
-            self.settings.screen.addWidget(Box(vLayout, griddata['gridnick']), "layout2")
+            self.app.screen.addWidget(Box(vLayout, griddata['gridnick']), "layout2")
             pack = SelectablePack()
             for key, region in regions.iteritems():
-                print "region:",key
-                selectable = SelectableRegion(0, region["id"], self.settings,
+                selectable = SelectableRegion(0, region["id"], self.app,
                                               pack)
                 label_text = region["name"] + " (" + str(region["x"]) + "," + str(region["y"]) + ")"
                 vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
-                #self.settings.exporter.test()
-            self.settings.addButton("Upload", vLayout)
-            self.settings.addButton("Clear", vLayout)
-            self.settings.addStatus("Connected to " + griddata['gridnick'])
-            Blender.Draw.Redraw(1)
+            self.app.addStatus("Connected to " + griddata['gridnick'])
             return
+    class ExportUploadAction(Action):
+        def __init__(self, app):
+            self.app = app
+        def execute(self):
+            exportAction = RealxtendExporterApplication.ExportAction(self.app)
+            uploadAction = RealxtendExporterApplication.UploadAction(self.app)
+            if not exportAction.execute() == False:
+                Blender.Draw.Draw()
+                uploadAction.execute()
     class ExportAction(Action):
         def __init__(self, app):
             self.app = app
             return
         def execute(self):
-            print "Export!!"
+            try:
+                self.export()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt export", ERROR)
+                return False
+        def export(self):
             import tempfile, shutil
             tempfile.gettempdir()
             base_url = self.app.exportSettings.server_url
+            path = self.app.exportSettings.path
             pack_name = self.app.exportSettings.pack
-            export_dir = self.app.exportSettings.export_dir
+            export_dir = path
+            self.app.addStatus("Exporting to " + path, IMMEDIATE)
             if not export_dir:
                 export_dir = tempfile.tempdir
             destfolder = os.path.join(export_dir, 'b2rx_export')
@@ -132,44 +169,52 @@ class RealextendExporterApplication(object):
             else:
                 shutil.rmtree(destfolder)
                 os.makedirs(destfolder)
-            self.app.addStatus("Export")
             self.app.exporter.export(destfolder, pack_name)
-            dest_file = "/tmp/world_pack.zip"
+            dest_file = os.path.join(export_dir, "world_pack.zip")
             self.app.packTo(destfolder, dest_file)
             self.app.addStatus("Exported to " + dest_file)
-            Blender.Draw.Redraw(1)
             return
     class UploadAction(Action):
         def __init__(self, exportSettings):
             self.app = exportSettings
-            return
         def execute(self):
-            print "Upload!!"
+            try:
+                self.upload()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt upload", ERROR)
+                return False
+        def upload(self):
             base_url = self.app.exportSettings.server_url
             pack_name = self.app.exportSettings.pack
             if not self.app.region_uuid:
-                self.app.addStatus("No region selected ")
+                self.app.addStatus("Error: No region selected ", ERROR)
                 return
-            print self.app.exporter.sim.sceneUpload(self.app.region_uuid,
+            self.app.addStatus("Uploading to " + base_url, IMMEDIATE)
+            res = self.app.exporter.sim.sceneUpload(self.app.region_uuid,
                                                                pack_name,
                                                                "/tmp/world_pack.zip")
-            self.app.addStatus("Uploaded to " + base_url)
-            print "Uploaded!!"
-            Blender.Draw.Redraw(1)
-            return
+	    if res.has_key('success') and res['success'] == True:
+                self.app.addStatus("Uploaded to " + base_url)
+            else:
+                self.app.addStatus("Error: Something went wrong uploading", ERROR)
     class ClearAction(Action):
-        def __init__(self, exportSettings):
-            self.app = exportSettings
-            return
+        def __init__(self, app):
+            self.app = app
         def execute(self):
+            try:
+                self.clear()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt clear", ERROR)
+                return False
+        def clear(self):
             base_url = self.app.exportSettings.server_url
             pack_name = self.app.exportSettings.pack
             if not self.app.region_uuid:
                 self.app.addStatus("No region selected ")
                 return
-            print self.app.exporter.sim.sceneClear(self.app.region_uuid,
+            self.app.exporter.sim.sceneClear(self.app.region_uuid,
                                                                pack_name)
             self.app.addStatus("Scene cleared " + self.app.region_uuid)
-            Blender.Draw.Redraw(1)
-            return
 
