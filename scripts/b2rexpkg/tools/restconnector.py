@@ -1,3 +1,7 @@
+"""
+ Converts xml messages coming from opensim rest into python structs.
+"""
+
 import urllib2
 import xml.etree.ElementTree as ET
 

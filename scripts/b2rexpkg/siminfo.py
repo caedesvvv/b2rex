@@ -2,7 +2,7 @@ import sys
 import urllib2
 import xml.etree.ElementTree as ET
 
-from restconnector import RestConnector
+from .tools.restconnector import RestConnector
 
 
 class GridInfo(RestConnector):
