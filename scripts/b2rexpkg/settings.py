@@ -14,17 +14,10 @@ class ExportSettings:
         self.pack = 'pack'
         self.server_url = 'http://delirium:9000'
         self.export_dir = ''
-        self.load()
-        """
-        self.fileName = ''
-        self.fixUpAxis = 0
-        self.doProperties = 0
-        self.scale = BoundedValueModel(0.0, 1e6, 1.0);
-        self.load()
-        """
         self.locX = BoundedValueModel(-10000.0, 10000.0, 128.0)
         self.locY = BoundedValueModel(-10000.0, 10000.0, 128.0)
         self.locZ = BoundedValueModel(-1000.0, 1000.0, 20.0)
+        self.load()
         return
     def getLocX(self):
         return self.locX.getValue()
@@ -48,11 +41,20 @@ class ExportSettings:
             if settingsDict.has_key('export_dir'):
                 self.export_dir = settingsDict['export_dir']
             if settingsDict.has_key('locX'):
-                self.locX.setValue(float(settingsDict['locX']))
+                try:
+                    self.locX.setValue(float(settingsDict['locX']))
+		except TypeError:
+                    pass
             if settingsDict.has_key('locY'):
-                self.locY.setValue(float(settingsDict['locY']))
+                try:
+                    self.locY.setValue(float(settingsDict['locY']))
+		except TypeError:
+                    pass
             if settingsDict.has_key('locZ'):
-                self.locZ.setValue(float(settingsDict['locZ']))
+                try:
+                    self.locZ.setValue(float(settingsDict['locZ']))
+		except TypeError:
+                    pass
     def save(self):
         """Save settings to registry.
         """
@@ -61,9 +63,9 @@ class ExportSettings:
         settingsDict['pack'] = self.pack
         settingsDict['server_url'] = self.server_url
         settingsDict['export_dir'] = self.export_dir
-        settingsDict['locX'] = self.locX
-        settingsDict['locY'] = self.locY
-        settingsDict['locZ'] = self.locZ
+        settingsDict['locX'] = self.locX.getValue()
+        settingsDict['locY'] = self.locY.getValue()
+        settingsDict['locZ'] = self.locZ.getValue()
         Registry.SetKey('b2rex', settingsDict, True) 
         return
 
