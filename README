@@ -1,4 +1,4 @@
-b2rex 0.1
+ B2REX 0.1
 ---------------
 
 Connects blender to realextend directly.
@@ -10,11 +10,16 @@ Features:
 
 Installation:
   - Copy everything inside the scripts folder to your blender scripts folder.
+  - Apply the provided patches for ogre exporters.
+    - dotscene exporter modified to have global location offset
+    - mesh exporter modified to have support for normal and specular maps.
 
 Server configuration:
-  - At the moment rest interfaces have to be enabled to.
-  - On linux xmlrpc functions on taiga-git where broken (see patch01).
-  - Added an xmlrpc communications component to taiga regions to manage uploading of worlds (ModularRex.RexNetwork.SceneUploadReceiver) (see SceneUploadReceiver.cs).
+  - REST interfaces have to be enabled to get region info from opensim.
+  - On linux xmlrpc functions on taiga-git where broken (see patch01), xmlrpc clients
+    get stuck on some situations.
+  - Added an xmlrpc communications component to taiga regions to manage uploading of 
+    worlds (ModularRex.RexNetwork.SceneUploadReceiver) (see SceneUploadReceiver.cs).
 
 License:
   - See COPYING
