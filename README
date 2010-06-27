@@ -13,6 +13,8 @@ Installation:
   - Apply the provided patches for ogre exporters.
     - dotscene exporter modified to have global location offset
     - mesh exporter modified to have support for normal and specular maps.
+    - mesh exporter modified to remove vertexColor support as otherwise materials
+      would not so up on realxtend (need a better workaround for this).
 
 Server configuration:
   - REST interfaces have to be enabled to get region info from opensim.
