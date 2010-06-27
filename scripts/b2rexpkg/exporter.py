@@ -1,18 +1,3 @@
-#!BPY
-
-"""
-Name: 'RealXtend Exporter'
-Blender: 249
-Group: 'Export'
-Tooltip: 'Exports the current scene to RealXtend server'
-"""
-
-__author__ = ['Pablo Martin']
-__version__ = '0.1'
-__url__ = ['B2rex Sim, http://sim.lorea.org',
-               'B2rex forum, http://sim.lorea.org/b2rex']
-__bpydoc__ = "Please see the external documentation that comes with the script."
-
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.simconnection import SimConnection
 from b2rexpkg.ogre_exporter import OgreExporter
