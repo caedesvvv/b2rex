@@ -1,6 +1,8 @@
 import ogremeshesexporter as meshexport
 import ogredotscene as sceneexport
+
 from ogrepkg.base import Log, View
+
 
 
 # kind of reporter	
@@ -36,11 +38,14 @@ class OgreExporter(object):
                           fixUpAxis, skeletonUseMeshName, applyModifiers,
                           convertXML, copyTextures, requireFaceMats)
 
-    def exportScene(self, path, pack_name):
+    def exportScene(self, path, pack_name, trans=[128.0, 128.0, 20]):
         self.sceneapp = sceneexport.DotSceneExporterApplication()
         # export scene
         self.sceneapp.exportSettings.path = path
         self.sceneapp.exportSettings.fileName = pack_name + ".scene"
+        self.sceneapp.exportSettings.transX = trans[0]
+        self.sceneapp.exportSettings.transY = trans[1]
+        self.sceneapp.exportSettings.transZ = trans[2]
         self.sceneapp.sceneExporter.export()
 
     def export(self, path, pack_name):
