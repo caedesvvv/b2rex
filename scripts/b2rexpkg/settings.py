@@ -1,3 +1,7 @@
+"""
+Application settings
+"""
+
 import os
 
 import Blender
@@ -20,13 +24,17 @@ class ExportSettings:
         self.load()
         return
     def getLocX(self):
+        """Get x offset
+        """
         return self.locX.getValue()
     def getLocY(self):
+        """Get y offset
+        """
         return self.locY.getValue()
     def getLocZ(self):
+        """Get z offset
+        """
         return self.locZ.getValue()
-    def getScale(self):
-        return self.scale.getValue()
     def load(self):
         """Load settings from registry, if available.
         """

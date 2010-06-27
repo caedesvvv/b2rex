@@ -1,9 +1,11 @@
+"""
+Classes managing the ogre mesh and dotscene exporters.
+"""
+
 import ogremeshesexporter as meshexport
 import ogredotscene as sceneexport
 
 from ogrepkg.base import Log, View
-
-
 
 # kind of reporter	
 class Reporter(View):
@@ -15,7 +17,11 @@ class OgreExporter(object):
     def __init__(self):
         self.meshapp = meshexport.MeshExporterApplication()
         self._myview = Reporter(Log.getSingleton())
+
     def exportMeshes(self, path, pack_name):
+        """
+        Export selected meshes to ogre .mesh format and material file.
+        """
         meshexport.OgreXMLConverter.getSingleton().setReorganiseBuffers(True)
         exportPath = path
         exportMaterial = True
@@ -40,6 +46,9 @@ class OgreExporter(object):
                           convertXML, copyTextures, requireFaceMats)
 
     def exportScene(self, path, pack_name, offset=[128.0, 128.0, 20]):
+        """
+        Export selected meshes to ogre scene format.
+        """
         self.sceneapp = sceneexport.DotSceneExporterApplication()
         # export scene
         self.sceneapp.exportSettings.path = path
@@ -50,6 +59,9 @@ class OgreExporter(object):
         self.sceneapp.sceneExporter.export()
 
     def export(self, path, pack_name, offset):
+        """
+        Export whole scene, including scene info and mesh info.
+        """
         self.exportMeshes(path, pack_name)
         self.exportScene(path, pack_name, offset)
         print sceneexport.exportLogger.messageList
@@ -58,4 +70,4 @@ if __name__ == '__main__':
     global_path = "/tmp/export2"
     pack_name = "cube2"
     exporter = OgreExporter()
-    exporter.export(global_path, pack_name)
+    exporter.export(global_path, pack_name, [128.0, 128.0, 128.0])

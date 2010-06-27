@@ -1,3 +1,7 @@
+"""
+Manage user connections to opensim.
+"""
+
 import xmlrpclib
 
 class SimConnection(object):
@@ -5,16 +9,28 @@ class SimConnection(object):
         self.session_id = None
         self._con = None
         self.avatar_uuid = None
+
     def connect(self, url):
+        """
+        Connect to the xmlrpc server.
+        """
         self._con = xmlrpclib.Server(url)
+
     def login(self, first, last, passwd):
+        """
+        Login with user credentials.
+        """
         r = self._con.login_to_simulator({'first':first, 'last':last,
                                       'web_login_key':'unknownrex',
                                           'passwd':passwd})
         self.session_id = r['session_id']
         self.avatar_uuid = r['agent_id']
         return r
+
     def sceneUpload(self, region_uuid, pack_name, file_name):
+        """
+        Upload given scene to the server.
+        """
         f = open(file_name, "r")
         r = self._con.ogrescene_upload({"AgentID": pack_name,
                                     "RegionID": region_uuid,
@@ -22,11 +38,17 @@ class SimConnection(object):
                                     "PackName": pack_name})
         f.close()
         return r
+
     def sceneClear(self, region_uuid, pack_name):
+        """
+        Clear all objects from the given scene.
+        """
         r = self._con.ogrescene_clear({"AgentID": pack_name,
                                    "RegionID": region_uuid,
                                    "PackName": pack_name})
         return r
+
+
 
 if __name__ == "__main__":
     con = SimConnection()

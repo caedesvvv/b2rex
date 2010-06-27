@@ -1,3 +1,7 @@
+"""
+Class holding all export modules.
+"""
+
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.simconnection import SimConnection
 from b2rexpkg.ogre_exporter import OgreExporter
@@ -8,10 +12,18 @@ class Exporter(object):
         self.gridinfo = GridInfo()
         self.sim = SimConnection()
         self.ogre = OgreExporter()
+
     def connect(self, base_url):
+        """
+        Connect to an opensim instance
+        """
         self.gridinfo.connect(base_url)
         print self.sim.connect(base_url)
+
     def test(self):
+        """
+        Api tests
+        """
         print self.gridinfo.getGridInfo()["gridnick"]
         regions = self.gridinfo.getRegions()
         for id in regions:
@@ -19,12 +31,16 @@ class Exporter(object):
             print " *", region["name"], region["x"], region["y"], id
 
         # xmlrpc
-        print self.sim.login("caedes", "caedes", "nemesis")
+        print self.sim.login("caedes", "caedes", "pass")
         print self.sim.sceneClear("d9d1b302-5049-452d-b176-3a9561189ca4",
                                          "cube")
         print self.sim.sceneUpload("d9d1b302-5049-452d-b176-3a9561189ca4",
                               "cube",
                               "/home/caedes/groupmembers.zip")
+
     def export(self, path, pack_name, offset):
+        """
+        Export the scene to a zipfile.
+        """
         self.ogre.export(path, pack_name, offset)
 

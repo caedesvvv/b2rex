@@ -1,3 +1,7 @@
+"""
+Main b2rex application class
+"""
+
 import os
 import traceback
 import b2rexpkg
@@ -27,9 +31,13 @@ class RealxtendExporterApplication(object):
 	self.settings_visible = False
         self.region_uuid = ''
 	self.regionLayout = None
-	self.createGui()
+	self.initGui()
         self.addStatus("b2rex started")
-    def createGui(self):
+
+    def initGui(self):
+        """
+        Initialize the interface system.
+        """
         self.vLayout = VerticalLayout()
         self.buttonLayout = HorizontalLayout()
         self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
@@ -45,6 +53,9 @@ class RealxtendExporterApplication(object):
         self.screen.addWidget(Box(self.vLayout, 'realXtend exporter'), "layout")
 
     def showSettings(self):
+        """
+        Create the settings widgets.
+        """
         self.settingsLayout = VerticalLayout()
         self.vLayout.addWidget(self.settingsLayout, 'settingsLayout')
         self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
@@ -60,13 +71,20 @@ class RealxtendExporterApplication(object):
             tooltip='Additional offset on the z axis.'), 'locZ')
 
     def toggleSettings(self):
+        """
+        Toggle the settings widget.
+        """
         if self.settings_visible:
             self.vLayout.removeWidget('settingsLayout')
             self.settings_visible = False
         else:
             self.showSettings()
             self.settings_visible = True
+
     def setRegion(self, region_uuid):
+        """
+        Set the selected region.
+        """
         if not self.region_uuid:
             # setting for the first time
             hLayout = HorizontalLayout()
@@ -76,14 +94,22 @@ class RealxtendExporterApplication(object):
             self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
+
     def addStatus(self, text, level = OK):
+        """
+        Add status information.
+        """
         self.screen.addWidget(Box(Label(text), 'status'), 'b2rex initialized')
         if level in [ERROR, IMMEDIATE]:
             # Force a redraw
             Blender.Draw.Draw()
         else:
             Blender.Draw.Redraw(1)
+
     def addSettingsButton(self, button_name, layout, tooltip=""):
+        """
+        Create a settings string button.
+        """
         val = getattr(self.exportSettings, button_name)
         self.buttons[button_name] = StringButton(val,
                                     RealxtendExporterApplication.ChangeSettingAction(self,
@@ -92,14 +118,25 @@ class RealxtendExporterApplication(object):
         layout.addWidget(self.buttons[button_name], 'buttonPanelButton' + button_name)
 
     def addButton(self, button_name, layout, tooltip=""):
+        """
+        Add a button to the interface. This function prelinks
+        the button to an action on this clss.
+        """
         action = getattr(RealxtendExporterApplication, button_name + 'Action')
         return layout.addWidget(Button(action(self),
                            button_name, [100, 20], tooltip),
                            button_name + 'Button')
 
     def go(self):
+        """
+        Start the ogre interface system
+        """
         self.screen.activate()
+
     def packTo(self, from_path, to_zip):
+        """
+        Pack a directory to a file.
+        """
         import zipfile
         zfile = zipfile.ZipFile(to_zip, "w", zipfile.ZIP_DEFLATED)
         for dirpath, dirnames, filenames in os.walk(from_path):
@@ -107,21 +144,33 @@ class RealxtendExporterApplication(object):
                 file_path = os.path.join(dirpath,  name)
                 zfile.write(file_path, file_path[len(from_path+"/"):])
         zfile.close()
+
     class ChangeSettingAction(Action):
+        """
+        Change a setting from the application.
+        """
         def __init__(self, app, name):
             self.app = app
             self.name = name
         def execute(self):
             setattr(self.app.exportSettings, self.name,
                     self.app.buttons[self.name].string.val)
+
     class QuitAction(Action):
+        """
+        Quit the application.
+        """
         def __init__(self, app):
             self.settings = app.exportSettings
         def execute(self):
             import Blender
             self.settings.save()
             Blender.Draw.Exit()
+
     class ConnectAction(Action):
+        """
+        Connect to the opensim server.
+        """
         def __init__(self, app):
             self.app = app
         def execute(self):
@@ -160,12 +209,20 @@ class RealxtendExporterApplication(object):
                 vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
             self.app.addStatus("Connected to " + griddata['gridnick'])
             return
+
     class ToggleSettingsAction(Action):
+        """
+        Toggle the settings panel.
+        """
         def __init__(self, app):
             self.app = app
         def execute(self):
             self.app.toggleSettings()
+
     class ExportUploadAction(Action):
+        """
+        Export and upload selected objects.
+        """
         def __init__(self, app):
             self.app = app
         def execute(self):
@@ -174,7 +231,11 @@ class RealxtendExporterApplication(object):
             if not exportAction.execute() == False:
                 Blender.Draw.Draw()
                 uploadAction.execute()
+
     class ExportAction(Action):
+        """
+        Export selected objects.
+        """
         def __init__(self, app):
             self.app = app
             return
@@ -209,7 +270,11 @@ class RealxtendExporterApplication(object):
             self.app.packTo(destfolder, dest_file)
             self.app.addStatus("Exported to " + dest_file)
             return
+
     class UploadAction(Action):
+        """
+        Upload a previously exported world.
+        """
         def __init__(self, exportSettings):
             self.app = exportSettings
         def execute(self):
@@ -233,7 +298,11 @@ class RealxtendExporterApplication(object):
                 self.app.addStatus("Uploaded to " + base_url)
             else:
                 self.app.addStatus("Error: Something went wrong uploading", ERROR)
+
     class ClearAction(Action):
+        """
+        Clear the selected scene.
+        """
         def __init__(self, app):
             self.app = app
         def execute(self):
