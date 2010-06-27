@@ -9,7 +9,7 @@ from b2rexpkg.exporter import Exporter
 from b2rexpkg.settings import ExportSettings
 
 from ogredotscene import Screen, HorizontalLayout
-from ogredotscene import BoundedValueModel
+from ogredotscene import NumberView, Widget
 from ogredotscene import VerticalLayout, Action, QuitButton
 from ogredotscene import StringButton, Label, Button, Box
 from ogredotscene import Selectable, SelectableLabel
@@ -27,14 +27,23 @@ class RealxtendExporterApplication(object):
         vLayout = VerticalLayout()
         buttonLayout = HorizontalLayout()
         self.buttonLayout = buttonLayout
-        for button_name in ['Connect', 'Export', 'Quit']:
-            self.addButton(button_name, buttonLayout)
+        self.addButton('Connect', buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
+        self.addButton('Export', buttonLayout, 'Export to disk')
+        self.addButton('Quit', buttonLayout, 'Quit the exporter')
 
         vLayout.addWidget(buttonLayout, 'buttonPanel')
         self.screen.addWidget(Box(vLayout, 'realXtend exporter'), "layout")
-        self.addSettingsButton('pack', vLayout)
-        self.addSettingsButton('path', vLayout)
-        self.addSettingsButton('server_url', vLayout)
+        self.addSettingsButton('pack', vLayout, 'name for the main world files')
+        self.addSettingsButton('path', vLayout, 'path to export to')
+        self.addSettingsButton('server_url', vLayout, 'server login url')
+        posControls = HorizontalLayout()
+        vLayout.addWidget(posControls, 'posControls')
+        posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
+            tooltip='Additional offset on the x axis.'), 'locX')
+        posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
+            tooltip='Additional offset on the y axis.'), 'locY')
+        posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
+            tooltip='Additional offset on the z axis.'), 'locZ')
         self.region_uuid = ''
 	self.regionLayout = None
         self.addStatus("status")
@@ -44,9 +53,9 @@ class RealxtendExporterApplication(object):
             # setting for the first time
             hLayout = HorizontalLayout()
             self.regionLayout.addWidget(hLayout, "regionButtons")
-            self.addButton("ExportUpload", hLayout)
-            self.addButton("Upload", hLayout)
-            self.addButton("Clear", hLayout)
+            self.addButton("ExportUpload", hLayout, 'Export scene and upload to opensim region')
+            self.addButton("Upload", hLayout, 'Upload previously exported scene')
+            self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
     def addStatus(self, text, level = OK):
@@ -56,18 +65,18 @@ class RealxtendExporterApplication(object):
             Blender.Draw.Draw()
         else:
             Blender.Draw.Redraw(1)
-    def addSettingsButton(self, button_name, layout):
+    def addSettingsButton(self, button_name, layout, tooltip=""):
         val = getattr(self.exportSettings, button_name)
         self.buttons[button_name] = StringButton(val,
                                     RealxtendExporterApplication.ChangeSettingAction(self,
                                                                                      button_name),
-                                                 button_name+": ", [200, 20],"extra")
+                                                 button_name+": ", [200, 20], tooltip)
         layout.addWidget(self.buttons[button_name], 'buttonPanelButton' + button_name)
 
-    def addButton(self, button_name, layout):
+    def addButton(self, button_name, layout, tooltip=""):
         action = getattr(RealxtendExporterApplication, button_name + 'Action')
         return layout.addWidget(Button(action(self),
-                           button_name, [100, 20], button_name),
+                           button_name, [100, 20], tooltip),
                            button_name + 'Button')
 
     def go(self):
@@ -169,7 +178,10 @@ class RealxtendExporterApplication(object):
             else:
                 shutil.rmtree(destfolder)
                 os.makedirs(destfolder)
-            self.app.exporter.export(destfolder, pack_name)
+            x = self.app.exportSettings.locX.getValue()
+            y = self.app.exportSettings.locY.getValue()
+            z = self.app.exportSettings.locZ.getValue()
+            self.app.exporter.export(destfolder, pack_name, [x, y, z])
             dest_file = os.path.join(export_dir, "world_pack.zip")
             self.app.packTo(destfolder, dest_file)
             self.app.addStatus("Exported to " + dest_file)

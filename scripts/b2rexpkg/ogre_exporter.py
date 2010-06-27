@@ -39,19 +39,19 @@ class OgreExporter(object):
                           fixUpAxis, skeletonUseMeshName, applyModifiers,
                           convertXML, copyTextures, requireFaceMats)
 
-    def exportScene(self, path, pack_name, trans=[128.0, 128.0, 20]):
+    def exportScene(self, path, pack_name, offset=[128.0, 128.0, 20]):
         self.sceneapp = sceneexport.DotSceneExporterApplication()
         # export scene
         self.sceneapp.exportSettings.path = path
         self.sceneapp.exportSettings.fileName = pack_name + ".scene"
-        self.sceneapp.exportSettings.transX = trans[0]
-        self.sceneapp.exportSettings.transY = trans[1]
-        self.sceneapp.exportSettings.transZ = trans[2]
+        self.sceneapp.exportSettings.transX = offset[0]
+        self.sceneapp.exportSettings.transY = offset[1]
+        self.sceneapp.exportSettings.transZ = offset[2]
         self.sceneapp.sceneExporter.export()
 
-    def export(self, path, pack_name):
+    def export(self, path, pack_name, offset):
         self.exportMeshes(path, pack_name)
-        self.exportScene(path, pack_name)
+        self.exportScene(path, pack_name, offset)
         print sceneexport.exportLogger.messageList
 
 if __name__ == '__main__':

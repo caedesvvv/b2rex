@@ -25,6 +25,6 @@ class Exporter(object):
         print self.sim.sceneUpload("d9d1b302-5049-452d-b176-3a9561189ca4",
                               "cube",
                               "/home/caedes/groupmembers.zip")
-    def export(self, path, pack_name):
-        self.ogre.export(path, pack_name)
+    def export(self, path, pack_name, offset):
+        self.ogre.export(path, pack_name, offset)
 
