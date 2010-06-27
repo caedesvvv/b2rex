@@ -3,6 +3,7 @@ Main b2rex application class
 """
 
 import os
+import tempfile, shutil
 import traceback
 import b2rexpkg
 from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
@@ -22,11 +23,11 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
-class RealxtendExporterApplication(object):
+class RealxtendExporterApplication(Exporter):
     def __init__(self):
+        Exporter.__init__(self)
         self.buttons = {}
         self.screen = Screen()
-        self.exporter = Exporter()
         self.exportSettings = ExportSettings()
 	self.settings_visible = False
         self.region_uuid = ''
@@ -145,6 +146,101 @@ class RealxtendExporterApplication(object):
                 zfile.write(file_path, file_path[len(from_path+"/"):])
         zfile.close()
 
+    def addRegionsPanel(self, regions, griddata):
+        """
+        Show available regions
+        """
+        vLayout = VerticalLayout()
+        self.regionLayout = vLayout
+        title = griddata['gridname'] + ' (' + griddata['mode'] + ')'
+        vLayout.addWidget(Label(title), 'scene_key_title')
+        self.screen.addWidget(Box(vLayout, griddata['gridnick']), "layout2")
+        pack = SelectablePack()
+        for key, region in regions.iteritems():
+             selectable = SelectableRegion(0, region["id"], self, pack)
+             label_text = region["name"] + " (" + str(region["x"]) + "," + str(region["y"]) + ")"
+             vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
+        return griddata
+
+    def clearAction(self):
+        """
+        Clear Action
+        """
+        base_url = self.exportSettings.server_url
+        pack_name = self.exportSettings.pack
+        if not self.region_uuid:
+            self.addStatus("No region selected ")
+            return
+        self.sim.sceneClear(self.region_uuid, pack_name)
+        self.addStatus("Scene cleared " + self.region_uuid)
+
+    def uploadAction(self):
+        """
+        Upload Action
+        """
+        base_url = self.exportSettings.server_url
+        pack_name = self.exportSettings.pack
+        if not self.region_uuid:
+            self.addStatus("Error: No region selected ", ERROR)
+            return
+        self.addStatus("Uploading to " + base_url, IMMEDIATE)
+        res = self.sim.sceneUpload(self.region_uuid,
+                                                           pack_name,
+                                                           "/tmp/world_pack.zip")
+        if res.has_key('success') and res['success'] == True:
+            self.addStatus("Uploaded to " + base_url)
+        else:
+            self.addStatus("Error: Something went wrong uploading", ERROR)
+
+    def connectAction(self):
+        """
+        Connect Action
+        """
+        base_url = self.exportSettings.server_url
+        self.addStatus("Connecting to " + base_url, IMMEDIATE)
+        self.connect(base_url)
+        self.region_uuid = ''
+        self.regionLayout = None
+        try:
+            regions = self.gridinfo.getRegions()
+            griddata = self.gridinfo.getGridInfo()
+        except:
+            self.addStatus("Error: couldnt connect to " + base_url, ERROR)
+            return
+        self.addRegionsPanel(regions, griddata)
+        # create the regions panel
+        self.addStatus("Connected to " + griddata['gridnick'])
+
+    def exportAction(self):
+        """
+        Export Action
+        """
+        tempfile.gettempdir()
+        base_url = self.exportSettings.server_url
+        pack_name = self.exportSettings.pack
+        export_dir = self.exportSettings.path
+        if not export_dir:
+            export_dir = tempfile.tempdir
+
+        self.addStatus("Exporting to " + export_dir, IMMEDIATE)
+
+        destfolder = os.path.join(export_dir, 'b2rx_export')
+        if not os.path.exists(destfolder):
+            os.makedirs(destfolder)
+        else:
+            shutil.rmtree(destfolder)
+            os.makedirs(destfolder)
+
+        x = self.exportSettings.locX.getValue()
+        y = self.exportSettings.locY.getValue()
+        z = self.exportSettings.locZ.getValue()
+
+        self.export(destfolder, pack_name, [x, y, z])
+        dest_file = os.path.join(export_dir, "world_pack.zip")
+        self.packTo(destfolder, dest_file)
+
+        self.addStatus("Exported to " + dest_file)
+
     class ChangeSettingAction(Action):
         """
         Change a setting from the application.
@@ -175,40 +271,11 @@ class RealxtendExporterApplication(object):
             self.app = app
         def execute(self):
             try:
-                self.connect()
+                self.app.connectAction()
 	    except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt connect. Check your settings to see they are ok", ERROR)
                 return False
-        def connect(self):
-            base_url = self.app.exportSettings.server_url
-            self.app.addStatus("Connecting to " + base_url, IMMEDIATE)
-            self.app.exporter.connect(base_url)
-            self.app.region_uuid = ''
-	    self.app.regionLayout = None
-            try:
-                regions = self.app.exporter.gridinfo.getRegions()
-            except:
-                self.app.addStatus("Error: couldnt connect to " + base_url, ERROR)
-                return
-            vLayout = VerticalLayout()
-	    self.app.regionLayout = vLayout
-            gridinfo = self.app.exporter.gridinfo
-            griddata = gridinfo.getGridInfo()
-            #for key in griddata:
-                #    vLayout.addWidget(Label(key + ": " + griddata[key]), 'scene_key_'+key)
-                #print key
-            title = griddata['gridname'] + ' (' + griddata['mode'] + ')'
-            vLayout.addWidget(Label(title), 'scene_key_title')
-            self.app.screen.addWidget(Box(vLayout, griddata['gridnick']), "layout2")
-            pack = SelectablePack()
-            for key, region in regions.iteritems():
-                selectable = SelectableRegion(0, region["id"], self.app,
-                                              pack)
-                label_text = region["name"] + " (" + str(region["x"]) + "," + str(region["y"]) + ")"
-                vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
-            self.app.addStatus("Connected to " + griddata['gridnick'])
-            return
 
     class ToggleSettingsAction(Action):
         """
@@ -241,35 +308,11 @@ class RealxtendExporterApplication(object):
             return
         def execute(self):
             try:
-                self.export()
+                self.app.exportAction()
             except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt export", ERROR)
                 return False
-        def export(self):
-            import tempfile, shutil
-            tempfile.gettempdir()
-            base_url = self.app.exportSettings.server_url
-            path = self.app.exportSettings.path
-            pack_name = self.app.exportSettings.pack
-            export_dir = path
-            self.app.addStatus("Exporting to " + path, IMMEDIATE)
-            if not export_dir:
-                export_dir = tempfile.tempdir
-            destfolder = os.path.join(export_dir, 'b2rx_export')
-            if not os.path.exists(destfolder):
-                os.makedirs(destfolder)
-            else:
-                shutil.rmtree(destfolder)
-                os.makedirs(destfolder)
-            x = self.app.exportSettings.locX.getValue()
-            y = self.app.exportSettings.locY.getValue()
-            z = self.app.exportSettings.locZ.getValue()
-            self.app.exporter.export(destfolder, pack_name, [x, y, z])
-            dest_file = os.path.join(export_dir, "world_pack.zip")
-            self.app.packTo(destfolder, dest_file)
-            self.app.addStatus("Exported to " + dest_file)
-            return
 
     class UploadAction(Action):
         """
@@ -279,25 +322,11 @@ class RealxtendExporterApplication(object):
             self.app = exportSettings
         def execute(self):
             try:
-                self.upload()
+                self.app.uploadAction()
             except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt upload", ERROR)
                 return False
-        def upload(self):
-            base_url = self.app.exportSettings.server_url
-            pack_name = self.app.exportSettings.pack
-            if not self.app.region_uuid:
-                self.app.addStatus("Error: No region selected ", ERROR)
-                return
-            self.app.addStatus("Uploading to " + base_url, IMMEDIATE)
-            res = self.app.exporter.sim.sceneUpload(self.app.region_uuid,
-                                                               pack_name,
-                                                               "/tmp/world_pack.zip")
-	    if res.has_key('success') and res['success'] == True:
-                self.app.addStatus("Uploaded to " + base_url)
-            else:
-                self.app.addStatus("Error: Something went wrong uploading", ERROR)
 
     class ClearAction(Action):
         """
@@ -307,18 +336,9 @@ class RealxtendExporterApplication(object):
             self.app = app
         def execute(self):
             try:
-                self.clear()
+                self.app.clearAction()
             except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt clear", ERROR)
                 return False
-        def clear(self):
-            base_url = self.app.exportSettings.server_url
-            pack_name = self.app.exportSettings.pack
-            if not self.app.region_uuid:
-                self.app.addStatus("No region selected ")
-                return
-            self.app.exporter.sim.sceneClear(self.app.region_uuid,
-                                                               pack_name)
-            self.app.addStatus("Scene cleared " + self.app.region_uuid)
 
