@@ -1,0 +1,14 @@
+ogredotscene.patch
+
+adds global location offset to scene export.
+
+ogrepkg.patch
+
+changes gameengine mode exporter materials:
+  * add normal and specular shaders
+  * fix tripping on unexisting materials
+  * ignore vertexColors as they malform the mesh for the ogre importer on taiga
+
+patch01.patch
+  * patch for opensim to fix xmlrpc connections getting stuck.
+
