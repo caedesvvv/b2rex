@@ -16,6 +16,7 @@ class OgreExporter(object):
         self.meshapp = meshexport.MeshExporterApplication()
         self._myview = Reporter(Log.getSingleton())
     def exportMeshes(self, path, pack_name):
+        meshexport.OgreXMLConverter.getSingleton().setReorganiseBuffers(True)
         exportPath = path
         exportMaterial = True
         materialScriptName = pack_name + ".material"
