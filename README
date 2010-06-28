@@ -23,6 +23,9 @@ Server configuration:
   - Added an xmlrpc communications component to taiga regions to manage uploading of 
     worlds (ModularRex.RexNetwork.SceneUploadReceiver) (see SceneUploadReceiver.cs).
 
+Manual:
+ - https://sim.lorea.org/pg/pages/view/86/
+
 License:
   - See COPYING
 
