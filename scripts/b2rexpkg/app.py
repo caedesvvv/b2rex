@@ -184,9 +184,10 @@ class RealxtendExporterApplication(Exporter):
             self.addStatus("Error: No region selected ", ERROR)
             return
         self.addStatus("Uploading to " + base_url, IMMEDIATE)
+        export_dir = self.getExportDir()
         res = self.sim.sceneUpload(self.region_uuid,
                                                            pack_name,
-                                                           "/tmp/world_pack.zip")
+                                   os.path.join(export_dir, "world_pack.zip"))
         if res.has_key('success') and res['success'] == True:
             self.addStatus("Uploaded to " + base_url)
         else:
@@ -218,9 +219,7 @@ class RealxtendExporterApplication(Exporter):
         tempfile.gettempdir()
         base_url = self.exportSettings.server_url
         pack_name = self.exportSettings.pack
-        export_dir = self.exportSettings.path
-        if not export_dir:
-            export_dir = tempfile.tempdir
+        export_dir = self.getExportDir()
 
         self.addStatus("Exporting to " + export_dir, IMMEDIATE)
 
@@ -240,6 +239,12 @@ class RealxtendExporterApplication(Exporter):
         self.packTo(destfolder, dest_file)
 
         self.addStatus("Exported to " + dest_file)
+
+    def getExportDir(self):
+        export_dir = self.exportSettings.path
+        if not export_dir:
+            export_dir = tempfile.tempdir
+        return export_dir
 
     class ChangeSettingAction(Action):
         """
