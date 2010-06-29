@@ -52,7 +52,7 @@ class SimConnection(object):
 
 if __name__ == "__main__":
     con = SimConnection()
-    print con.connect("http://delirium:9000")
+    print con.connect("http://127.0.0.1:9000")
     print con.login("caedes", "caedes", "nemesis")
     print con.sceneClear("d9d1b302-5049-452d-b176-3a9561189ca4", "cube")
     print con.sceneUpload("d9d1b302-5049-452d-b176-3a9561189ca4", "cube",
