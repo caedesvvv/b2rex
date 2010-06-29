@@ -5,7 +5,7 @@ Class to get grid info from opensim
 import urllib2
 import xml.etree.ElementTree as ET
 
-from .tools.restconnector import RestConnector
+from tools.restconnector import RestConnector
 
 
 class GridInfo(RestConnector):
@@ -17,7 +17,10 @@ class GridInfo(RestConnector):
         """
         Get general grid information.
         """
-        self.gridinfo = self.httpObjGet("/get_grid_info")
+        try:
+            self.gridinfo = self.httpObjGet("/get_grid_info")
+        except:
+		self.gridinfo = {"gridname":"", "gridnick":"region", "mode":"standalone"}
         return self.gridinfo
 
     def getRegions(self):
@@ -35,7 +38,7 @@ class GridInfo(RestConnector):
 
 
 if __name__ == '__main__':
-    base_url = "http://delirium:9000"
+    base_url = "http://127.0.0.1:9000"
     gridinfo = GridInfo()
     gridinfo.connect(base_url)
     print gridinfo.getGridInfo()["gridnick"]
