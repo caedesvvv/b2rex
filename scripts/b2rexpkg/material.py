@@ -1,3 +1,6 @@
+"""
+Rex material support for the ogre exporter.
+"""
 import Blender
 
 from ogrepkg.materialexport import GameEngineMaterial, clamp, DefaultMaterial
@@ -5,6 +8,9 @@ from ogrepkg.base import PathName, indent
 
 
 class RexMaterialExporter(GameEngineMaterial):
+	"""
+	Material exporter and parser to export for the rex cg supershader
+	"""
 	def __init__(self, manager, blenderMesh, blenderFace, colouredAmbient):
 		GameEngineMaterial.__init__(self, manager, blenderMesh, blenderFace, colouredAmbient)
 		self.mesh = blenderMesh
@@ -25,6 +31,9 @@ class RexMaterialExporter(GameEngineMaterial):
 		return
 
 	def getAutodetect(self):
+		"""
+		Get the autodetect property for the material.
+		"""
 		mat = self.material
 		if not mat:
 			return True
@@ -35,6 +44,9 @@ class RexMaterialExporter(GameEngineMaterial):
 		return mat.properties['opensim']['autodetect']
 
 	def toggleAutodetect(self):
+		"""
+		Toggle the autodetect property.
+		"""
 		mat = self.material
 		if not 'opensim' in mat.properties:
 			mat.properties['opensim'] = {}
@@ -47,23 +59,45 @@ class RexMaterialExporter(GameEngineMaterial):
 		self._parseShader(mat)
 
 	def setShader(self, shader):
+		"""
+		Set the custom shader to use if autodetect is off
+		"""
 		mat = self.material
 		if not 'opensim' in mat.properties:
 			mat.properties['opensim'] = {}
 		mat.properties['opensim']['shader'] = shader
 	def getShader(self):
+		"""
+		Get the custom shader to use if autodetect is off
+		"""
 		mat = self.material
 		if not 'opensim' in mat.properties or not 'shader' in mat.properties['opensim']:
 			return ""
 		return mat.properties['opensim']['shader']
 
 	def _parseMaterial(self, mat):
-		# alpha
+		"""
+		Parse the blender material and fill up internal structures.
+		"""
 		if mat:
 			self.alpha = mat.getAlpha()
+			self.shadows = mat.getMode() & Blender.Material.Modes['SHADOWBUF']
+			#print "shadows", self.shadows #, Blender.Material.Modes.keys()
 		self._parseShader(mat)
 
+	def getFPShaderVariables(self):
+		"""
+		Unused for the moment
+		"""
+		shVars = {}
+		if 'Spec' in self.shader:
+			shVars['specularPower'] = 0.8
+		return shVars
+
 	def _parseShader(self, mat):
+		"""
+		Find out what shader and shader properties to use.
+		"""
 		fp_parms = {}
 		vp_parms = {}
 		textures = self.getTextureLayers(mat)
@@ -72,32 +106,42 @@ class RexMaterialExporter(GameEngineMaterial):
 		spectex = textures['spec']
 		ambtex = textures['amb']
 		reftex = textures['ref']
+		specHardness = 0.8
+		if mat:
+			specHardness = mat.getHardness()
 		if textures['disp'] and textures['spec'] and textures['nor']:
 			shader = "rex/DiffSpecmapNormalParallax"
-			fp_parms['specularPower'] = 0.8
+			fp_parms['specularPower'] = specHardness
 		elif textures['nor'] and textures['amb']:
 			shader = "rex/DiffNormalLightmap"
 		elif nortex and nortex.tex and nortex.tex.getImage():
 			if spectex:
 				shader = "rex/DiffSpecmapNormal"
-				fp_parms['specularPower'] = 0.8
+				fp_parms['specularPower'] = specHardness
 			else:
 				shader = "rex/DiffNormal"
+			if self.shadows:
+				shader += "Shadow"
 		elif reftex and spectex:
 			shader = "rex/DiffSpecmapRefl"
-			fp_parms['specularPower'] = 0.8
+			fp_parms['specularPower'] = specHardness
 		elif reftex:
 			fp_parms['opacity'] = alpha
 			shader = "rex/DiffReflAlpha"
 		else:
 			shader = "rex/Diff"
-		if 'opensim' in mat.properties and 'shader' in mat.properties['opensim'] and 'autodetect' in mat.properties['opensim'] and not mat.properties['opensim']['autodetect']:
+			if self.shadows:
+				shader += "Shadow"
+		if mat and 'opensim' in mat.properties and 'shader' in mat.properties['opensim'] and 'autodetect' in mat.properties['opensim'] and not mat.properties['opensim']['autodetect']:
 			shader = mat.properties['opensim']['shader']
 
 		self.shader = shader
 		self.fp_parms = fp_parms
 
 	def _writeShaderPrograms(self, f):
+		"""
+		Write the rex specific shader references into the material.
+		"""
 		shader = self.shader
 		fp_parms = self.fp_parms
 		vp_parms = self.vp_parms
@@ -115,6 +159,9 @@ class RexMaterialExporter(GameEngineMaterial):
 		f.write(indent(3)+"}\n")
 
 	def writeTechniques(self, f):
+		"""
+		Write the techniques for the material.
+		"""
 		mat = self.material
 		if (not(mat)
 			and not(self.mesh.vertexColors)
@@ -125,6 +172,9 @@ class RexMaterialExporter(GameEngineMaterial):
 			self.writeRexTechniques(f, mat)
 
 	def _writePassContents(self, f, mat):
+		"""
+		Write a full pass information.
+		"""
 		f.write(indent(3)+"iteration once\n")
 
 		# shader programs
@@ -137,6 +187,9 @@ class RexMaterialExporter(GameEngineMaterial):
 		self._writeTextureUnits(f, mat)
 
 	def _writeMaterialParameters(self, f, mat):
+		"""
+		Write the material parameters.
+		"""
 		# alpha
 		if self.alpha < 1.0:
 			f.write(indent(3)+"scene_blend alpha_blend\n")
@@ -195,6 +248,9 @@ class RexMaterialExporter(GameEngineMaterial):
 				##f.write(indent(3)+"emissive %f %f %f\n" % (emR, emG, emB))
 
 	def _writeTextureUnits(self, f, mat):
+		"""
+		Write the texture units for the material.
+		"""
 		textures = self.getTextureLayers(mat)
 		spectex = textures['spec']
 		nortex = textures['nor']
@@ -219,6 +275,10 @@ class RexMaterialExporter(GameEngineMaterial):
 			##f.write(indent(3) + "shading flat\n")
 			# texture
 			if (self.face.mode & Blender.Mesh.FaceModes['TEX']) and (self.face.image):
+				# 0.0-heightMap
+				if disptex:
+					self._exportTextureUnit(f, "heightMap", disptex)
+
 				# 0-diffuse
 				f.write(indent(3)+"texture_unit baseMap\n")
 				f.write(indent(3)+"{\n")
@@ -237,10 +297,21 @@ class RexMaterialExporter(GameEngineMaterial):
 					self._exportTextureUnit(f, "lightMap", ambtex)
 
 				# 4-shadow
-				if self.shadows:
-					f.write(indent(3)+"texture_unit shadowMap\n")
+				if self.shadows and "Shadow" in self.shader:
+					f.write(indent(3)+"texture_unit shadowMap0\n")
 					f.write(indent(3)+"{\n")
 					f.write(indent(4)+"content_type shadow\n")
+					f.write(indent(4)+"tex_address_mode clamp\n")
+					f.write(indent(3)+"}\n") # texture_unit
+					f.write(indent(3)+"texture_unit shadowMap1\n")
+					f.write(indent(3)+"{\n")
+					f.write(indent(4)+"content_type shadow\n")
+					f.write(indent(4)+"tex_address_mode clamp\n")
+					f.write(indent(3)+"}\n") # texture_unit
+					f.write(indent(3)+"texture_unit shadowMap2\n")
+					f.write(indent(3)+"{\n")
+					f.write(indent(4)+"content_type shadow\n")
+					f.write(indent(4)+"tex_address_mode clamp\n")
 					f.write(indent(3)+"}\n") # texture_unit
 
 				# 5-luminanceMap
@@ -251,12 +322,12 @@ class RexMaterialExporter(GameEngineMaterial):
 				if reftex:
 					self._exportTextureUnit(f, "reflectionMap", reftex)
 
-				# 3-heightMap
-				if disptex:
-					self._exportTextureUnit(f, "heightMap", disptex)
 
 
 	def writeRexTechniques(self, f, mat):
+		"""
+		Write a rex material technique.
+		"""
 		# default material
 		# SOLID, white, no specular
 		f.write(indent(1)+"technique\n")
@@ -269,13 +340,22 @@ class RexMaterialExporter(GameEngineMaterial):
 		return
 
 	def getTextureLayers(self, mat):
+		"""
+		Get an array with the texture layers.
+		"""
 		textures = {}
 		if mat:
 			for tex in ['SPEC', 'NOR', 'REF', 'AMB', 'DISP', 'ALPHA']:
 				textures[tex.lower()] = self.findMapToTexture(mat, tex)
+		else:
+			for tex in ['SPEC', 'NOR', 'REF', 'AMB', 'DISP', 'ALPHA']:
+				textures[tex.lower()] = None
 		return textures
 
 	def _exportTextureUnit(self, f, name, btex):
+		"""
+		Export a single texture unit based on a blender mapto texture.
+		"""
 		f.write(indent(3)+"texture_unit " + name + "\n")
 		f.write(indent(3)+"{\n")
 		if btex.tex and btex.tex.getImage():
@@ -283,6 +363,9 @@ class RexMaterialExporter(GameEngineMaterial):
 		f.write(indent(3)+"}\n") # texture_unit
 
 	def findMapToTexture(self, meshmat, mapto):
+		"""
+		Find a mapto texture to apply for a specific mapto.
+		"""
 		if not meshmat and len(self.mesh.materials):
 			meshmat = self.mesh.materials[0]
 		if meshmat:

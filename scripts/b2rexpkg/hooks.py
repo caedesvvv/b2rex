@@ -1,5 +1,5 @@
 """
-    Main b2rex package
+    Some ugly hooks to override behaviour from the ogre exporter.
 """
 
 from collections import defaultdict

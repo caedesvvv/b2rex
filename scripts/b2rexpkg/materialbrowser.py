@@ -1,5 +1,5 @@
 """
-Main b2rex application class
+Material browser application.
 """
 
 import os
@@ -21,7 +21,10 @@ from ogredotscene import VerticalLayout, Action, QuitButton
 from ogredotscene import StringButton, Label, Button, Box
 from ogredotscene import Selectable, SelectableLabel
 
-from cStringIO import StringIO
+try:
+	from cStringIO import StringIO
+except:
+	from StringIO import StringIO
 
 ERROR = 0
 OK = 1
@@ -33,7 +36,7 @@ class RealxtendMaterialBrowser(object):
         self.buttons = {}
         self.screen = Screen()
         self.exportSettings = ExportSettings()
-        self.settings_visible = False
+        self.shader_visible = False
         self.region_uuid = ''
         self.regionLayout = None
         self.initGui()
@@ -50,7 +53,14 @@ class RealxtendMaterialBrowser(object):
 				  tooltip='Autodetect shader')
 		self.matButtonLayout.addWidget(AutodetectButton, 'autodetect_button')
 		if not autodetect:
-			self.shaderButton = self.addStringButton(materialExporter.getShader() ,'Shader: ', self.matButtonLayout, 'Shader to use for this material')
+			self.shaderButton = self.addStringButton(materialExporter.getShader() ,'Shader', self.matButtonLayout, 'Shader to use for this material')
+		shaderButton = CheckBox(RealxtendMaterialBrowser.ToggleShaderVisibleAction(self),
+					  self.shader_visible,
+					  'Show Shader',
+					  [100, 20],
+					  tooltip='Show Shader text')
+		self.matButtonLayout.addWidget(shaderButton, 'ShaderButton')
+
         layout.addWidget(self.matButtonLayout, 'matButtonLayout')
 
     def parseSelected(self):
@@ -64,21 +74,13 @@ class RealxtendMaterialBrowser(object):
                 materialExporter = RexMaterialExporter(self, mesh, face, colouredAmbient)
 		self.createMaterialButtons(shaderLayoutBox, materialExporter)
 		self.shaderLayout.addWidget(Box(shaderLayoutBox, materialExporter._createName()), 'shaderBox')
+		lineWidget = Label("")
+		shaderLayoutBox.addWidget(lineWidget, 'lineShader3')
 		lineWidget = Label("Shader: "+materialExporter.shader)
 		shaderLayoutBox.addWidget(lineWidget, 'lineShader')
-		lineWidget = Label("")
-		shaderLayoutBox.addWidget(lineWidget, 'lineShader2')
-                f = StringIO()
-                materialExporter.writeTechniques(f)
-                rexMaterial = f.getvalue()
-                for idx, line in enumerate(rexMaterial.split('\n')):
-                        color = [0,0,0]
-                        if "program_ref" in line:
-                            color = [0.2, 0.2, 0.8]
-                        if "texture_unit" in line:
-                            color = [0.2, 0.5, 0.2]
-                        lineWidget = Label(line, 'normal', color)
-                        shaderLayoutBox.addWidget(lineWidget, 'line'+str(idx))
+		if self.shader_visible:
+			self.showShader()
+
                 Blender.Draw.Draw()
 
     def registerTextureImage(self, bimage):
@@ -95,44 +97,43 @@ class RealxtendMaterialBrowser(object):
         #self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
         self.addButton('Refresh', self.buttonLayout, 'Export to disk')
         self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
-        settingsButton = CheckBox(RealxtendMaterialBrowser.ToggleSettingsAction(self),
-			          self.settings_visible,
-				  'Settings',
-				  [100, 20],
-				  tooltip='Show Settings')
-        self.buttonLayout.addWidget(settingsButton, 'SettingsButton')
         self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
         self.screen.addWidget(Box(self.vLayout, 'b2rex material browser'), "layout")
         self.screen.addWidget(self.shaderLayout, "shaderLayout")
 
-    def showSettings(self):
+    def showShader(self):
         """
-        Create the settings widgets.
-        """
-        self.settingsLayout = VerticalLayout()
-        self.vLayout.addWidget(self.settingsLayout, 'settingsLayout')
-        self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
-        self.addSettingsButton('path', self.settingsLayout, 'path to export to')
-        self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
-        posControls = HorizontalLayout()
-        self.settingsLayout.addWidget(posControls, 'posControls')
-        posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the x axis.'), 'locX')
-        posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the y axis.'), 'locY')
-        posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the z axis.'), 'locZ')
+        Show the shader text
+	"""
+        materialExporter = self.getMaterialExporter()
+	shaderText = VerticalLayout()
+	lineWidget = Label("")
+	shaderText.addWidget(lineWidget, 'lineShader2')
+	f = StringIO()
+	materialExporter.writeTechniques(f)
+	rexMaterial = f.getvalue()
+	for idx, line in enumerate(rexMaterial.split('\n')):
+		color = [0,0,0]
+		if "program_ref" in line:
+		    color = [0.2, 0.2, 0.8]
+		if "texture_unit" in line:
+		    color = [0.2, 0.5, 0.2]
+		lineWidget = Label(line, 'small', color)
+		shaderText.addWidget(lineWidget, 'line'+str(idx))
+	
+	self.shaderLayoutBox.addWidget(shaderText, 'shaderText')
 
     def setShader(self, value):
-	print "set shader!", value
 	materialExporter = self.getMaterialExporter()
 	materialExporter.setShader(value)
+	self.parseSelected()
 
     def toggleAutodetect(self):
 	materialExporter = self.getMaterialExporter()
 	materialExporter.toggleAutodetect()
 	# XXX update interface
-	self.createMaterialButtons(self.shaderLayoutBox, materialExporter)
+	self.parseSelected()
+	#self.createMaterialButtons(self.shaderLayoutBox, materialExporter)
 
     def getAutodetect(self):
 	materialExporter = self.getMaterialExporter()
@@ -156,30 +157,16 @@ class RealxtendMaterialBrowser(object):
         obj = objs[0]
         return obj
 
-    def toggleSettings(self):
+    def toggleShaderVisible(self):
         """
         Toggle the settings widget.
         """
-        if self.settings_visible:
-            self.vLayout.removeWidget('settingsLayout')
-            self.settings_visible = False
+        if self.shader_visible:
+            self.shaderLayoutBox.removeWidget('shaderText')
+            self.shader_visible = False
         else:
-            self.showSettings()
-            self.settings_visible = True
-
-    def setRegion(self, region_uuid):
-        """
-        Set the selected region.
-        """
-        if not self.region_uuid:
-            # setting for the first time
-            hLayout = HorizontalLayout()
-            self.regionLayout.addWidget(hLayout, "regionButtons")
-            self.addButton("ExportUpload", hLayout, 'Export scene and upload to opensim region')
-            self.addButton("Upload", hLayout, 'Upload previously exported scene')
-            self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
-        self.region_uuid = region_uuid
-        self.addStatus("Region set to " + region_uuid)
+            self.showShader()
+            self.shader_visible = True
 
     def addStatus(self, text, level = OK):
         """
@@ -192,17 +179,6 @@ class RealxtendMaterialBrowser(object):
         else:
             Blender.Draw.Redraw(1)
 
-    def addSettingsButton(self, button_name, layout, tooltip=""):
-        """
-        Create a settings string button.
-        """
-        val = getattr(self.exportSettings, button_name)
-        self.buttons[button_name] = StringButton(val,
-                                    RealxtendMaterialBrowser.ChangeSettingAction(self,
-                                                                                     button_name),
-                                                 button_name+": ", [200, 20], tooltip)
-        layout.addWidget(self.buttons[button_name], 'buttonPanelButton' + button_name)
-
     def addStringButton(self, value, button_name, layout, tooltip=""):
         """
         Add a button to the interface. This function prelinks
@@ -210,7 +186,7 @@ class RealxtendMaterialBrowser(object):
         """
         action = getattr(RealxtendMaterialBrowser, button_name + 'Action')
         button = StringButton(value, action(self),
-                           button_name, [100, 20], tooltip)
+			button_name+": ", [100, 20], tooltip)
         layout.addWidget(button, button_name + 'Button')
 	return button
 
@@ -229,129 +205,6 @@ class RealxtendMaterialBrowser(object):
         Start the ogre interface system
         """
         self.screen.activate()
-
-    def packTo(self, from_path, to_zip):
-        """
-        Pack a directory to a file.
-        """
-        import zipfile
-        zfile = zipfile.ZipFile(to_zip, "w", zipfile.ZIP_DEFLATED)
-        for dirpath, dirnames, filenames in os.walk(from_path):
-            for name in filenames:
-                file_path = os.path.join(dirpath,  name)
-                zfile.write(file_path, file_path[len(from_path+"/"):])
-        zfile.close()
-
-    def addRegionsPanel(self, regions, griddata):
-        """
-        Show available regions
-        """
-        vLayout = VerticalLayout()
-        self.regionLayout = vLayout
-        title = griddata['gridname'] + ' (' + griddata['mode'] + ')'
-        vLayout.addWidget(Label(title), 'scene_key_title')
-        self.screen.addWidget(Box(vLayout, griddata['gridnick']), "layout2")
-        pack = SelectablePack()
-        for key, region in regions.iteritems():
-             selectable = SelectableRegion(0, region["id"], self, pack)
-             label_text = region["name"] + " (" + str(region["x"]) + "," + str(region["y"]) + ")"
-             vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
-        return griddata
-
-    def clearAction(self):
-        """
-        Clear Action
-        """
-        base_url = self.exportSettings.server_url
-        pack_name = self.exportSettings.pack
-        if not self.region_uuid:
-            self.addStatus("No region selected ")
-            return
-        self.sim.sceneClear(self.region_uuid, pack_name)
-        self.addStatus("Scene cleared " + self.region_uuid)
-
-    def uploadAction(self):
-        """
-        Upload Action
-        """
-        base_url = self.exportSettings.server_url
-        pack_name = self.exportSettings.pack
-        if not self.region_uuid:
-            self.addStatus("Error: No region selected ", ERROR)
-            return
-        self.addStatus("Uploading to " + base_url, IMMEDIATE)
-        export_dir = self.getExportDir()
-        res = self.sim.sceneUpload(self.region_uuid,
-                                                           pack_name,
-                                   os.path.join(export_dir, "world_pack.zip"))
-        if res.has_key('success') and res['success'] == True:
-            self.addStatus("Uploaded to " + base_url)
-        else:
-            self.addStatus("Error: Something went wrong uploading", ERROR)
-
-    def connectAction(self):
-        """
-        Connect Action
-        """
-        base_url = self.exportSettings.server_url
-        self.addStatus("Connecting to " + base_url, IMMEDIATE)
-        self.connect(base_url)
-        self.region_uuid = ''
-        self.regionLayout = None
-        try:
-            regions = self.gridinfo.getRegions()
-            griddata = self.gridinfo.getGridInfo()
-        except:
-            self.addStatus("Error: couldnt connect to " + base_url, ERROR)
-            return
-        self.addRegionsPanel(regions, griddata)
-        # create the regions panel
-        self.addStatus("Connected to " + griddata['gridnick'])
-
-    def exportAction(self):
-        """
-        Export Action
-        """
-        tempfile.gettempdir()
-        base_url = self.exportSettings.server_url
-        pack_name = self.exportSettings.pack
-        export_dir = self.getExportDir()
-
-        self.addStatus("Exporting to " + export_dir, IMMEDIATE)
-
-        destfolder = os.path.join(export_dir, 'b2rx_export')
-        if not os.path.exists(destfolder):
-            os.makedirs(destfolder)
-        else:
-            shutil.rmtree(destfolder)
-            os.makedirs(destfolder)
-
-        x = self.exportSettings.locX.getValue()
-        y = self.exportSettings.locY.getValue()
-        z = self.exportSettings.locZ.getValue()
-
-        self.export(destfolder, pack_name, [x, y, z])
-        dest_file = os.path.join(export_dir, "world_pack.zip")
-        self.packTo(destfolder, dest_file)
-
-        self.addStatus("Exported to " + dest_file)
-
-    def getExportDir(self):
-        export_dir = self.exportSettings.path
-        if not export_dir:
-            export_dir = tempfile.tempdir
-        return export_dir
-
-    class ChangeSettingAction(Action):
-        """
-        Change a setting from the application.
-        """
-        def __init__(self, app, name):
-            self.app = app
-            self.name = name
-        def execute(self):
-            setattr(self.app.exportSettings, self.name,
-                    self.app.buttons[self.name].string.val)
 
     class RefreshAction(Action):
         """
@@ -401,15 +254,15 @@ class RealxtendMaterialBrowser(object):
                 self.app.addStatus("Error: couldnt connect. Check your settings to see they are ok", ERROR)
                 return False
 
-    class ToggleSettingsAction(Action):
+    class ToggleShaderVisibleAction(Action):
         """
-        Toggle the settings panel.
+        Toggle the shader text
         """
         def __init__(self, app):
             self.app = app
 
         def execute(self):
-            self.app.toggleSettings()
+            self.app.toggleShaderVisible()
 
     class ShaderAction(Action):
         """
@@ -422,64 +275,4 @@ class RealxtendMaterialBrowser(object):
             button = self.app.shaderButton
 	    self.app.setShader(button.string.val)
 
-
-    class ExportUploadAction(Action):
-        """
-        Export and upload selected objects.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            exportAction = RealxtendMaterialBrowser.ExportAction(self.app)
-            uploadAction = RealxtendMaterialBrowser.UploadAction(self.app)
-            if not exportAction.execute() == False:
-                Blender.Draw.Draw()
-                uploadAction.execute()
-
-    class ExportAction(Action):
-        """
-        Export selected objects.
-        """
-        def __init__(self, app):
-            self.app = app
-            return
-
-        def execute(self):
-            try:
-                self.app.exportAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt export", ERROR)
-                return False
-
-    class UploadAction(Action):
-        """
-        Upload a previously exported world.
-        """
-        def __init__(self, exportSettings):
-            self.app = exportSettings
-
-        def execute(self):
-            try:
-                self.app.uploadAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt upload", ERROR)
-                return False
-
-    class ClearAction(Action):
-        """
-        Clear the selected scene.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.clearAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt clear", ERROR)
-                return False
 
