@@ -1,10 +1,10 @@
 #!BPY
 
 """
-Name: 'RealXtend Exporter'
+Name: 'RealXtend Material Browser'
 Blender: 249
-Group: 'Export'
-Tooltip: 'Exports the current scene to RealXtend server'
+Group: 'Materials'
+Tooltip: 'See material properties from objects'
 """
 
 __author__ = ['Pablo Martin']
@@ -16,10 +16,10 @@ __bpydoc__ = "Please see the external documentation that comes with the script."
 
 
 import b2rexpkg
-from b2rexpkg.app import RealxtendExporterApplication
+from b2rexpkg.materialbrowser import RealxtendMaterialBrowser
 
 
 if __name__ == "__main__":
-    application = RealxtendExporterApplication()
+    application = RealxtendMaterialBrowser()
     application.go()
 
