@@ -15,7 +15,11 @@ using System.Net;
 using OgreSceneImporter;
 using Ionic.Zip;
 
-namespace ModularRex.RexNetwork
+using ModularRex.RexFramework;
+using ModularRex.RexNetwork;
+
+
+namespace OgreSceneImporter
 {
  //   delegate void AppearanceAddedDelegate(UUID agentID);
 
@@ -97,6 +101,7 @@ namespace ModularRex.RexNetwork
         {
 		if (!m_initialised) {
             	    MainServer.Instance.AddXmlRPCHandler("ogrescene_upload", XmlRpcHandler);
+            	    MainServer.Instance.AddXmlRPCHandler("ogrescene_list", ListXmlRpcHandler);
             	    MainServer.Instance.AddXmlRPCHandler("ogrescene_clear", ClearXmlRpcHandler);
 		    m_initialised = true;
 		}
@@ -141,6 +146,63 @@ namespace ModularRex.RexNetwork
 		    UUID regionID = UUID.Parse((string)requestData["RegionID"]);
 		    m_scene = SelectRegion(regionID);
 		    m_scene.DeleteAllSceneObjects();
+	    }
+	    else
+	    {
+		    resp["success"] = false;
+		    resp["error"] = "no RegionID provided";
+		    response.Value = resp;
+                    return response;
+	    }
+	    // return ok;
+	    m_log.Info("Region Cleared: " + requestData["RegionID"].ToString());
+            resp["success"] = true;
+	    response.Value = resp;
+	    return response;
+	}
+        public XmlRpcResponse ListXmlRpcHandler(XmlRpcRequest request, IPEndPoint client)
+	{
+  	    // AuthClient.VerifySession(GetUserServerURL(userID), userID, sessionID);
+            XmlRpcResponse response = new XmlRpcResponse();
+            Hashtable requestData = (Hashtable)request.Params[0];
+            Hashtable resp = new Hashtable();
+	    Hashtable result = new Hashtable();
+            if (requestData.ContainsKey("RegionID"))
+	    {
+		    UUID regionID = UUID.Parse((string)requestData["RegionID"]);
+		    m_scene = SelectRegion(regionID);
+
+                    IModrexObjectsProvider rexObjects = m_scene.RequestModuleInterface<IModrexObjectsProvider>();
+
+		    m_scene.ForEachSOG(delegate(SceneObjectGroup e)
+		    {
+		    	Hashtable sogdata = new Hashtable();
+			sogdata["name"] = e.Name;
+			sogdata["groupid"] = e.GroupID.ToString();
+			sogdata["primcount"] = e.PrimCount.ToString();
+			sogdata["owner"] = e.OwnerID.ToString();
+			sogdata["part"] = e.GetFromItemID().ToString();
+
+                        RexObjectProperties robject = rexObjects.GetObject(e.RootPart.UUID);
+                        sogdata["asset"] = robject.RexMeshUUID.ToString();
+                        sogdata["distance"] = robject.RexDrawDistance.ToString();
+			if (robject.RexMaterials.Count > 0) {
+				Hashtable materials = new Hashtable();
+				foreach (uint matindex in robject.RexMaterials.Keys) {
+					materials[robject.RexMaterials[matindex].AssetID.ToString()] = robject.RexMaterials[matindex].AssetURI;
+					AssetBase asset = m_scene.AssetService.Get(robject.RexMaterials[matindex].AssetID.ToString());
+					materials[robject.RexMaterials[matindex].AssetID.ToString()+"_d"] = asset.Description;
+					materials[robject.RexMaterials[matindex].AssetID.ToString()+"_data"] = (byte[])asset.Data;
+				}
+				sogdata["materials"] = materials;
+			}
+ //                       robject.RexCastShadows = ent.CastShadows;
+   //                     robject.RexDrawType = 1;
+
+		    	result[e.UUID.ToString()] = sogdata;
+		    });
+            	    resp["res"] = result;
+		    // m_scene.DeleteAllSceneObjects();
 	    }
 	    else
 	    {

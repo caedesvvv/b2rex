@@ -1,0 +1,463 @@
+Index: addon-modules/ModreX/OgreSceneImporter/OgreSceneImportModule.cs
+===================================================================
+--- addon-modules/ModreX/OgreSceneImporter/OgreSceneImportModule.cs	(revisión: 394)
++++ addon-modules/ModreX/OgreSceneImporter/OgreSceneImportModule.cs	(copia de trabajo)
+@@ -10,7 +10,10 @@
+ using OpenSim.Framework;
+ using System.Drawing;
+ using ModularRex.RexFramework;
++using ModularRex.RexNetwork;
+ 
++using System.Xml;
++
+ namespace OgreSceneImporter
+ {
+     public class OgreSceneImportModule : IRegionModule
+@@ -208,6 +211,81 @@
+             }
+         }
+ 
++	private bool ParseSceneUUIDS(string fileName, out Dictionary<string, UUID> materialUUIDs, out Dictionary<string, UUID> textureUUIDs, out Dictionary<string, UUID> meshUUIDs, out Dictionary<string, UUID> objectUUIDs)
++	{
++ 	        System.IO.StreamReader sreader = System.IO.File.OpenText(fileName);
++        	string data = sreader.ReadToEnd();
++	        sreader.Close();
++		XmlDocument XMLDoc = new XmlDocument();
++            	XMLDoc.LoadXml(data);
++		XmlElement XMLRoot = XMLDoc.DocumentElement;
++		materialUUIDs = new Dictionary<string, UUID>();
++		textureUUIDs = new Dictionary<string, UUID>();
++		meshUUIDs = new Dictionary<string, UUID>();
++		objectUUIDs = new Dictionary<string, UUID>();
++                if (XMLRoot.Name != "uuids")
++		{
++			m_log.Error("[DotSceneLoader] Error: Invalid .uuids File. Missing <scene>");
++	                return false;
++		}
++		XmlElement XMLNode;
++		XmlElement pElement;
++		XMLNode = (XmlElement)XMLRoot.SelectSingleNode("materials");
++                if (XMLNode != null) {
++			pElement = (XmlElement)XMLNode.SelectSingleNode("material");
++			while (pElement != null)
++			{
++				string name = pElement.GetAttribute("name");
++				string uuid = pElement.GetAttribute("uuid");
++				if (!materialUUIDs.ContainsKey(name))
++					materialUUIDs.Add(name, new UUID(uuid));
++				
++				pElement = (XmlElement)pElement.NextSibling;
++			}
++		}
++		XMLNode = (XmlElement)XMLRoot.SelectSingleNode("objects");
++                if (XMLNode != null) {
++			pElement = (XmlElement)XMLNode.SelectSingleNode("object");
++			while (pElement != null)
++			{
++				string name = pElement.GetAttribute("name");
++				string uuid = pElement.GetAttribute("uuid");
++				if (!objectUUIDs.ContainsKey(name))
++					objectUUIDs.Add(name, new UUID(uuid));
++				
++				pElement = (XmlElement)pElement.NextSibling;
++			}
++		}
++
++		XMLNode = (XmlElement)XMLRoot.SelectSingleNode("meshes");
++                if (XMLNode != null) {
++			pElement = (XmlElement)XMLNode.SelectSingleNode("mesh");
++			while (pElement != null)
++			{
++				string name = pElement.GetAttribute("name");
++				string uuid = pElement.GetAttribute("uuid");
++				if (!meshUUIDs.ContainsKey(name))
++					meshUUIDs.Add(name, new UUID(uuid));
++
++				pElement = (XmlElement)pElement.NextSibling;
++			}
++		}
++		XMLNode = (XmlElement)XMLRoot.SelectSingleNode("textures");
++                if (XMLNode != null) {
++			pElement = (XmlElement)XMLNode.SelectSingleNode("texture");
++			while (pElement != null)
++			{
++				string name = pElement.GetAttribute("name");
++				string uuid = pElement.GetAttribute("uuid");
++				if (!textureUUIDs.ContainsKey(name))
++					textureUUIDs.Add(name, new UUID(uuid));
++
++				pElement = (XmlElement)pElement.NextSibling;
++			}
++		}
++                return true;
++	}
++
+         private void ImportOgreScene(string fileName)
+         {
+             DotSceneLoader loader = new DotSceneLoader();
+@@ -221,6 +299,14 @@
+                 return;
+             }
+             
++
++            Dictionary<string, UUID> materials = null;
++            Dictionary<string, UUID> textures = null;
++            Dictionary<string, UUID> meshes = null;
++            Dictionary<string, UUID> objects = null;
++
++            if (System.IO.File.Exists(fileName + ".uuids"))
++                ParseSceneUUIDS(fileName + ".uuids", out materials, out textures, out meshes, out objects);
+             //Load&parse materials & textures
+             //check that file exists
+             if (!System.IO.File.Exists(fileName + ".material"))
+@@ -233,9 +319,7 @@
+             sreader.Close();
+             OgreMaterialParser parser = new OgreMaterialParser(m_scene);
+             string filepath = PathFromFileName(fileName);
+-            Dictionary<string, UUID> materials = null;
+-            Dictionary<string, UUID> textures = null;
+-            if (!parser.ParseAndSaveMaterial(data, out materials, out textures))
++            if (!parser.ParseAndSaveMaterial(data, materials, textures))
+             {
+                 m_log.Error("[OGRESCENE]: Material parsing failed. Ending operation");
+                 return;
+@@ -251,7 +335,7 @@
+             //Load&parse meshes and add them to scene
+             m_log.Info("[OGRESCENE]: Loading OGRE stuff to scene");
+ 
+-            AddObjectsToScene(ogreSceneManager.RootSceneNode, materials, filepath);
++            AddObjectsToScene(ogreSceneManager.RootSceneNode, materials, meshes, objects, filepath);
+             //AddObjectsToScene(ogreSceneManager.RootSceneNode, materials);
+         }
+ 
+@@ -304,10 +388,21 @@
+                     data = OpenMetaverse.Imaging.OpenJPEG.EncodeFromImage(image, true);
+ 
+                     //Create asset
+-                    AssetBase asset = new AssetBase(texture.Value, texture.Key, (sbyte)AssetType.Texture);
+-                    asset.Data = data;
++                    //Add mesh to asset db
++		    AssetBase asset = null;
++		    asset = m_scene.AssetService.Get(texture.Value.ToString());
++		    
++		    if (asset == null) {
++                    	m_log.InfoFormat("[OGRESCENE]: Create texture {0}", texture.Key);
++                    	asset = new AssetBase(texture.Value, texture.Key, (sbyte)AssetType.Texture);
++                    	asset.Data = data;
++                    	m_scene.AssetService.Store(asset);
++		    }
++		    else {
++                    	m_log.InfoFormat("[OGRESCENE]: Reuse texture {0}", texture.Key);
++		        m_scene.AssetService.UpdateContent(texture.Value.ToString(), data);
++		    }
+ 
+-                    m_scene.AssetService.Store(asset);
+                     
+                 }
+                 catch (Exception e)
+@@ -334,9 +429,10 @@
+             return b;
+         }
+ 
+-        private void AddObjectsToScene(SceneNode node, Dictionary<string, UUID> materials, string additionalSearchPath)
++        private void AddObjectsToScene(SceneNode node, Dictionary<string, UUID> materials, Dictionary<string, UUID> meshes, Dictionary<string, UUID> objects, string additionalSearchPath)
+         {
+ 
++            m_log.ErrorFormat("[OGRESCENE]: Loading {0} entities", node.Entities.Count);
+ 			// Quaternion for whole scene rotation
+             Quaternion sceneRotQuat = Quaternion.CreateFromAxisAngle(new Vector3(0,0,1), ToRadians(m_sceneRotation));
+ 
+@@ -347,6 +443,7 @@
+             {
+                 foreach (Entity ent in node.Entities)
+                 {
++            	    m_log.ErrorFormat("[OGRESCENE]: Loading {0}", ent.MeshName);
+                     //first check that file exists
+                     bool usePath = false;
+                     string p = System.IO.Path.Combine(additionalSearchPath, ent.MeshName);
+@@ -365,11 +462,33 @@
+                     else
+                         data = System.IO.File.ReadAllBytes(p);
+ 
++                        UUID meshID;
++                        if (!meshes.ContainsKey(ent.Name))
++			{
++	                        meshID = UUID.Random();
++                            	meshes.Add(ent.Name, meshID);
++			}
++			else
++			{
++                                meshID = meshes[ent.Name];
++			}
++
+                     //Add mesh to asset db
+-                    AssetBase asset = new AssetBase(UUID.Random(), ent.MeshName, 43);
+-                    asset.Description = ent.Name;
+-                    asset.Data = data;
+-                    m_scene.AssetService.Store(asset);
++		    AssetBase asset = null;
++		    asset = m_scene.AssetService.Get(meshID.ToString());
++		    if (asset == null) {
++                    	m_log.InfoFormat("[OGRESCENE]: Create mesh {0}", ent.Name);
++                    	asset = new AssetBase(meshID, ent.MeshName, 43);
++                    	asset.Description = ent.Name;
++                    	asset.Data = data;
++                    	m_scene.AssetService.Store(asset);
++		    }
++		    else {
++                    	m_log.InfoFormat("[OGRESCENE]: Reuse mesh {0}", ent.Name);
++			m_scene.AssetService.UpdateContent(meshID.ToString(), data);
++                    	asset.Description = ent.Name;
++                    	asset.Data = data;
++		    }
+ 
+                     //Read material names
+                     List<string> materialNames;
+@@ -401,6 +520,7 @@
+                             m_log.WarnFormat("[OGRESCENE]: Inserting object {1} to height {0}. This object might be under water", objPos.Z, ent.MeshName);
+ 
+                         //Add object to scene
++                       	m_log.WarnFormat("[OGRESCENE]: Create Scene Object 0.3");
+                         Quaternion rot = new Quaternion(node.DerivedOrientation.X, node.DerivedOrientation.Y, node.DerivedOrientation.Z, node.DerivedOrientation.W);
+                         if (m_swapAxes == true)
+                         {
+@@ -416,9 +536,51 @@
+                             rot *= new Quaternion(0, 1, 0);
+                         }
+                         rot = sceneRotQuat * rot;
+-                        
+-                        SceneObjectGroup sceneObject = m_scene.AddNewPrim(m_scene.RegionInfo.MasterAvatarAssignedUUID,
+-                            m_scene.RegionInfo.MasterAvatarAssignedUUID, objPos, rot, PrimitiveBaseShape.CreateBox());
++                        ////SceneObjectPart part = m_scene.GetSceneObjectPart(someUUID);
++                        //SceneObjectGroup sceneObject = m_scene.AddNewPrim(m_scene.RegionInfo.EstateSettings.EstateOwner,
++                       	m_log.InfoFormat("[OGRESCENE]: Go object: " + ent.Name);
++			SceneObjectGroup sceneObject = null;
++                        if (objects.ContainsKey(ent.Name))
++			{
++                        	UUID objectID = objects[ent.Name];
++	//			sceneObject = m_scene.SceneContents.GetGroupByPrim(objectID);
++				SceneObjectPart part = null; //m_scene.GetSceneObjectPart(objectID);
++                    		m_log.InfoFormat("[OGRESCENE]: Look For {0}", objectID.ToString());
++				m_scene.ForEachSOG(delegate(SceneObjectGroup e)
++				{
++					if (e.RootPart.UUID == objectID)
++					{
++						sceneObject = e;
++						part = e.RootPart;
++					}
++				});
++				if (part != null) {
++					//sceneObject = m_scene.SceneContents.GetGroupByPrim(part.LocalId);
++					part.RotationOffset = rot;
++					part.GroupPosition = objPos;
++					part.OwnerID = m_scene.RegionInfo.EstateSettings.EstateOwner;
++				}
++			}
++
++			if (sceneObject == null) {
++                    		m_log.InfoFormat("[OGRESCENE]: Create object {0}", ent.Name);
++				sceneObject = new SceneObjectGroup(m_scene.RegionInfo.EstateSettings.EstateOwner, objPos, rot, PrimitiveBaseShape.CreateBox());
++ 	                       if (objects.ContainsKey(ent.Name))
++				{
++                	        	UUID objectID = objects[ent.Name];
++					sceneObject.RootPart.UUID = objectID;
++				}
++				m_scene.AddNewSceneObject(sceneObject, true);
++				sceneObject.SetGroup(m_scene.RegionInfo.EstateSettings.EstateOwner, null);
++
++//	                        sceneObject = m_scene.AddNewPrim(m_scene.RegionInfo.EstateSettings.EstateOwner,
++  //                          			m_scene.RegionInfo.EstateSettings.EstateOwner, objPos, rot, PrimitiveBaseShape.CreateBox());
++			}
++			else {
++                    		m_log.InfoFormat("[OGRESCENE]: Reuse object {0}", ent.Name);
++			}
++			sceneObject.ScheduleGroupForFullUpdate();
++		
+                         Vector3 newScale = new Vector3();
+                         newScale.X = node.DerivedScale.X * m_objectScale;
+                         newScale.Y = node.DerivedScale.Y * m_objectScale;
+@@ -431,6 +593,7 @@
+                             newScale.Z = temp.Y;
+                         } 
+                         sceneObject.RootPart.Scale = newScale;
++                  	m_log.InfoFormat("[OGRESCENE]: Reuse object 1 {0}", ent.Name);
+ 
+                         //Add refs to materials, mesh etc.
+                         IModrexObjectsProvider rexObjects = m_scene.RequestModuleInterface<IModrexObjectsProvider>();
+@@ -439,6 +602,13 @@
+                         robject.RexDrawDistance = ent.RenderingDistance;
+                         robject.RexCastShadows = ent.CastShadows;
+                         robject.RexDrawType = 1;
++                  	m_log.InfoFormat("[OGRESCENE]: Reuse object 2 {0}", ent.Name);
++		//	rexObjects.SendPropertiesToAllUsers(sceneObject.RootPart.UUID, robject);
++			//rexObjects.TriggerOnChangeRexObjectProperties(sceneObject.RootPart.UUID);
++		//	WorldAssetsFolder worldAssets = m_scene.RequestModuleInterface<WorldAssetsFolder>();
++		//	worldAssets.UpdateWorldAssetFolders(m_scene);
++                  	m_log.InfoFormat("[OGRESCENE]: Reuse object 3 {0}", ent.Name);
++			//rexObjects.TriggerOnSaveObject(sceneObject.RootPart.UUID);
+                         
+                         // Only assign physics mesh if no error
+                         if ((meshLoaderError == "") && (m_useCollisionMesh == true))
+@@ -451,7 +621,7 @@
+                             {
+                             }
+                         }
+-                        
++                        robject.RexMaterials.ClearMaterials();
+                         for (int i = 0; i < materialNames.Count; i++)
+                         {
+                             UUID materilUUID;
+@@ -478,7 +648,7 @@
+             {
+                 foreach (SceneNode child in node.Children)
+                 {
+-                    AddObjectsToScene(child, materials, additionalSearchPath);
++                    AddObjectsToScene(child, materials, meshes, objects, additionalSearchPath);
+                 }
+             }
+         }
+@@ -510,4 +680,4 @@
+         }
+ 
+     }
+-}
+\ No newline at end of file
++}
+Index: addon-modules/ModreX/OgreSceneImporter/OgreMaterialParser.cs
+===================================================================
+--- addon-modules/ModreX/OgreSceneImporter/OgreMaterialParser.cs	(revisión: 394)
++++ addon-modules/ModreX/OgreSceneImporter/OgreMaterialParser.cs	(copia de trabajo)
+@@ -21,13 +21,14 @@
+             m_scene = scene;
+         }
+ 
+-        public bool ParseAndSaveMaterial(string materialScript, out Dictionary<string, UUID> materialUUIDs, out Dictionary<string, UUID> textureUUIDs)
++        public bool ParseAndSaveMaterial(string materialScript, Dictionary<string, UUID> materialUUIDs, Dictionary<string, UUID> textureUUIDs)
+         {
+-            materialUUIDs = new Dictionary<string, UUID>();
+-            textureUUIDs = new Dictionary<string, UUID>();
++             m_log.ErrorFormat("[OGRESCENE]: ParseAndSave");
++ //           materialUUIDs = new Dictionary<string, UUID>();
++   //         textureUUIDs = new Dictionary<string, UUID>();
+             System.IO.StringReader reader = new System.IO.StringReader(materialScript);
+-            try
+-            {
++  //          try
++    //        {
+                 string line = reader.ReadLine();
+                 while (line != null)
+                 {
+@@ -59,19 +60,30 @@
+                         {
+                             materialName = matStrParts[1];
+                         }
+-
+-                        UUID materialID = UUID.Random();
+-                        try
++             m_log.ErrorFormat("[OGRESCENE]: ParseAndSave.0" + materialName);
++                        UUID materialID;
++                        if (!materialUUIDs.ContainsKey(materialName))
++			{
++	                        materialID = UUID.Random();
++                            	materialUUIDs.Add(materialName, materialID);
++			}
++			else
++			{
++                                materialID = materialUUIDs[materialName];
++			}
++             m_log.ErrorFormat("[OGRESCENE]: ParseAndSave.1");
++                        /*try
+                         {
+                             materialUUIDs.Add(materialName, materialID);
+                         }
+                         catch (Exception e)
+                         {
+                             m_log.ErrorFormat("[OGRESCENE]: duplicate material \"{0}\"", materialName);
+-                        }
++                        }*/
+ 
+                         StringBuilder material = new StringBuilder();
+                         material.AppendLine("material " + materialID.ToString());
++             m_log.ErrorFormat("[OGRESCENE]: ParseAndSave.2");
+                         int openBracets = 0;
+                         do
+                         {
+@@ -114,11 +126,13 @@
+                                 UUID textUUID;
+                                 if (!textureUUIDs.ContainsKey(textName))
+                                 {
++             			    m_log.ErrorFormat("[OGRESCENE]: Texture UUID NOT Found {0} Creating a New One", textName);
+                                     textUUID = UUID.Random();
+                                     textureUUIDs.Add(textName, textUUID);
+                                 }
+                                 else
+                                 {
++             			    m_log.ErrorFormat("[OGRESCENE]: Texture UUID Found {0}", textName);
+                                     textUUID = textureUUIDs[textName];
+                                 }
+ 
+@@ -127,22 +141,35 @@
+                             material.AppendLine(line);
+                         } while (!(line.StartsWith("}") && openBracets <= 0));
+ 
+-                        AssetBase asset = new AssetBase(materialID, materialName, 45); //45 is OgreMaterial asset type
+-                        asset.Data = Utils.StringToBytes(material.ToString());
+-                        m_scene.AssetService.Store(asset);
++			AssetBase asset = null;
++			asset = m_scene.AssetService.Get(materialID.ToString());
++			if (asset != null) {
++				m_scene.AssetService.Delete(materialID.ToString());
++				asset = null;
++			}
++			if (asset == null){
++             			m_log.InfoFormat("[OGRESCENE]: Create material {0}", materialName);
++	                        asset = new AssetBase(materialID, materialName, 45); //45 is OgreMaterial asset type
++			}
++			else {
++             			m_log.InfoFormat("[OGRESCENE]: Reuse material {0}", materialName);
++				//m_scene.AssetService.UpdateContent(materialID.ToString(), Utils.StringToBytes(material.ToString()));
++			}
++			asset.Data = Utils.StringToBytes(material.ToString());
++			m_scene.AssetService.Store(asset);
+                     }
+ 
+                     line = reader.ReadLine();
+                 }
+-            }
++/*            }
+             catch (Exception exp)
+             {
+                 m_log.WarnFormat("Exception while parsing materials, closing filereader: {0}", exp.Message);
+                 reader.Close();
+                 throw;
+-            }
++            }*/
+ 
+             return true;
+         }
+     }
+-}
+\ No newline at end of file
++}
+Index: addon-modules/ModreX/RexDotMeshLoader/OMeshSerializerImpl.cs
+===================================================================
+--- addon-modules/ModreX/RexDotMeshLoader/OMeshSerializerImpl.cs	(revisión: 394)
++++ addon-modules/ModreX/RexDotMeshLoader/OMeshSerializerImpl.cs	(copia de trabajo)
+@@ -33,7 +33,7 @@
+ 
+         public MeshSerializerImpl()
+         {
+-            version = "[MeshSerializer_v1.40]";
++            version = "[MeshSerializer_v1.41]";
+         }
+ 
+         public OMesh ImportMesh(byte[] vData)
+@@ -49,7 +49,7 @@
+             if(headerID == (short)MeshChunkID.Header)
+             {
+                 string fileVersion = ReadString(reader);
+-                if (fileVersion != "[MeshSerializer_v1.30]" && fileVersion != "[MeshSerializer_v1.40]")
++                if (fileVersion != "[MeshSerializer_v1.30]" && fileVersion != "[MeshSerializer_v1.40]" && fileVersion != "[MeshSerializer_v1.41]")
+                 {
+                     throw new Exception("Only supporting .mesh versions 1.3 & 1.4");
+                 }
