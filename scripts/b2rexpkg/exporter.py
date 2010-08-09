@@ -2,9 +2,13 @@
 Class holding all export modules.
 """
 
+import os
+import b2rexpkg
 from b2rexpkg.siminfo import GridInfo
 from b2rexpkg.simconnection import SimConnection
 from b2rexpkg.ogre_exporter import OgreExporter
+from b2rexpkg.hooks import reset_uuids
+import Blender
 
 class Exporter(object):
     def __init__(self):
@@ -42,5 +46,11 @@ class Exporter(object):
         """
         Export the scene to a zipfile.
         """
+        b2rexpkg.start()
+        reset_uuids(Blender.Material.Get())
+        #       reset_uuids(Blender.Mesh.Get())
         self.ogre.export(path, pack_name, offset)
+        f = open(os.path.join(path, pack_name + ".uuids"), 'w')
+        b2rexpkg.write(f)
+        f.close()
 

@@ -22,7 +22,9 @@ class SimConnection(object):
         """
         r = self._con.login_to_simulator({'first':first, 'last':last,
                                       'web_login_key':'unknownrex',
-                                          'passwd':passwd})
+                                          'passwd':passwd,
+                                          'start':'home'})
+	print r
         self.session_id = r['session_id']
         self.avatar_uuid = r['agent_id']
         return r
@@ -54,7 +56,22 @@ if __name__ == "__main__":
     con = SimConnection()
     print con.connect("http://127.0.0.1:9000")
     print con.login("caedes", "caedes", "nemesis")
-    print con.sceneClear("d9d1b302-5049-452d-b176-3a9561189ca4", "cube")
-    print con.sceneUpload("d9d1b302-5049-452d-b176-3a9561189ca4", "cube",
-                         "/home/caedes/groupmembers.zip")
+    #a = con._con.search_for_region_by_name({"name":"Taiga"})
+    #print con._con.user_alert({"name":"Taiga"})
+    #print con._con.check({})
+    scenedata = con._con.ogrescene_list({"RegionID":"0a1b14b9-ca02-481d-bf77-9cbeca1ab050"})
+    for groupid, scenegroup in scenedata['res'].iteritems():
+        print " *", groupid, scenegroup
+        if "materials" in scenegroup:
+            for mat in scenegroup['materials'].values():
+                if isinstance(mat, xmlrpclib.Binary):
+                    #                   print mat.decode()
+                    print mat.data
+    #a = con._con.admin_create_region({"password":"unknownrex",
+    #                                  "region_name":"test2", "region_master_first":"caedes","region_master_last":"caedes","region_master_password":"caedes","external_address":"127.0.0.1","listen_ip":"127.0.0.1","listen_port":9002,"region_x":999,"region_y":1001})
+    #con._con.admin_delete_region({"password":"unknownrex",
+    #                              "region_name":a["region_name"]})
+    #print con.sceneClear("d9d1b302-5049-452d-b176-3a9561189ca4", "cube")
+    #print con.sceneUpload("d9d1b302-5049-452d-b176-3a9561189ca4", "cube",
+    #                     "/home/caedes/groupmembers.zip")
 
