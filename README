@@ -1,7 +1,7 @@
  B2REX 0.2
 ---------------
 
-Connects blender to realextend directly.
+Connects blender to realXtend directly.
 
 Features:
   - Manages ogre exporters internally.
