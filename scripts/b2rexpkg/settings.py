@@ -21,6 +21,10 @@ class ExportSettings:
         self.locX = BoundedValueModel(-10000.0, 10000.0, 128.0)
         self.locY = BoundedValueModel(-10000.0, 10000.0, 128.0)
         self.locZ = BoundedValueModel(-1000.0, 1000.0, 20.0)
+	self.regenMaterials = True
+	self.regenObjects = False
+	self.regenTextures = False
+	self.regenMeshes = False
         self.load()
         return
     def getLocX(self):
@@ -40,6 +44,10 @@ class ExportSettings:
         """
         settingsDict = Registry.GetKey('b2rex', True)
         if settingsDict:
+            for prop in ['Objects', 'Textures', 'Materials', 'Meshes']:
+		keyName = 'regen' + prop
+		if settingsDict.has_key(keyName):
+                    setattr(self, keyName, settingsDict[keyName])
             if settingsDict.has_key('path'):
                 self.path = settingsDict['path']
             if settingsDict.has_key('pack'):
@@ -74,6 +82,9 @@ class ExportSettings:
         settingsDict['locX'] = self.locX.getValue()
         settingsDict['locY'] = self.locY.getValue()
         settingsDict['locZ'] = self.locZ.getValue()
+        for prop in ['Objects', 'Textures', 'Materials', 'Meshes']:
+            keyName = 'regen' + prop
+            settingsDict[keyName] = getattr(self, keyName)
         Registry.SetKey('b2rex', settingsDict, True) 
         return
 

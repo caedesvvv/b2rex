@@ -63,14 +63,24 @@ class RealxtendExporterApplication(Exporter):
         self.addSettingsButton('path', self.settingsLayout, 'path to export to')
         self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
         posControls = HorizontalLayout()
+        uuidControls = HorizontalLayout()
         self.settingsLayout.addWidget(posControls, 'posControls')
+        self.settingsLayout.addWidget(uuidControls, 'uuidControls')
         posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the x axis.'), 'locX')
         posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the y axis.'), 'locY')
         posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
             tooltip='Additional offset on the z axis.'), 'locZ')
-
+        for objtype in ['Objects', 'Meshes', 'Materials', 'Textures']:
+            keyName = 'regen' + objtype
+            settingToggle = CheckBox(RealxtendExporterApplication.ToggleSettingAction(self, objtype),
+				          getattr(self.exportSettings, keyName),
+					  'Regen ' + objtype,
+					  [100, 20],
+					  tooltip='Regenerate uuids for ' + objtype)
+            uuidControls.addWidget(settingToggle, keyName)
+ 
     def toggleSettings(self):
         """
         Toggle the settings widget.
@@ -234,7 +244,7 @@ class RealxtendExporterApplication(Exporter):
         y = self.exportSettings.locY.getValue()
         z = self.exportSettings.locZ.getValue()
 
-        self.export(destfolder, pack_name, [x, y, z])
+        self.export(destfolder, pack_name, [x, y, z], self.exportSettings)
         dest_file = os.path.join(export_dir, "world_pack.zip")
         self.packTo(destfolder, dest_file)
 
@@ -292,6 +302,19 @@ class RealxtendExporterApplication(Exporter):
 
         def execute(self):
             self.app.toggleSettings()
+
+    class ToggleSettingAction(Action):
+        """
+        Toggle a boolean setting.
+        """
+        def __init__(self, app, objtype):
+            self.app = app
+            self.objtype = objtype 
+
+        def execute(self):
+            keyName = 'regen' + self.objtype
+            setattr(self.app.exportSettings, keyName, not getattr(self.app.exportSettings, keyName))
+
 
     class ExportUploadAction(Action):
         """
