@@ -11,11 +11,15 @@ Features:
 
 Installation:
   - Copy everything inside the scripts folder to your blender scripts folder.
-  - Apply the provided patches for ogre exporters.
+  - Apply the provided patches for ogre exporters (not needed if installing from a release that already contains the modified versions).
     - dotscene exporter modified to have global location offset
     - material exporter modified to have support for normal and specular maps.
     - mesh exporter modified to remove vertexColor support as otherwise materials
       would not so up on realxtend (need a better workaround for this).
+
+Naali tweaks:
+    - naali's supershader with parallax: available in the extras/ folder,
+      for now you need to install this if you want to use parallax.
 
 Server configuration:
   - REST interfaces have to be enabled to get region info from opensim.
