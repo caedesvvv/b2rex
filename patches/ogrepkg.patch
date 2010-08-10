@@ -1,0 +1,98 @@
+Sólo en ogrepkg/: armatureexport.pyc
+Sólo en ogrepkg/: base.pyc
+Sólo en ogrepkg/: gui.pyc
+Sólo en ogrepkg/: __init__.pyc
+diff -ru /home/caedes/src/ogre-1.7.0~ogredev6/Tools/BlenderExport/ogrepkg/materialexport.py ogrepkg/materialexport.py
+--- /home/caedes/src/ogre-1.7.0~ogredev6/Tools/BlenderExport/ogrepkg/materialexport.py	2009-05-17 17:26:28.000000000 +0200
++++ ogrepkg/materialexport.py	2010-06-27 14:58:29.000000000 +0200
+@@ -120,7 +120,20 @@
+ 			#  diffuse is defined as
+ 			#  (mat->r, mat->g, mat->b)*(mat->emit + mat->ref)
+ 			#  but it's not used.)
+-			if self.mesh.vertexColors:
++			spectex = self.findMapToTexture(mat, 'SPEC')
++			if spectex:
++				shader = "rex/DiffSpecmapNormal"
++			else:
++				shader = "rex/DiffNormal"
++			f.write(indent(3)+"iteration once\n")
++			f.write(indent(3)+"vertex_program_ref " + shader + "VP\n")
++			f.write(indent(3)+"{\n")
++			f.write(indent(3)+"}\n")
++			f.write(indent(3)+"fragment_program_ref " + shader + "FP\n")
++			f.write(indent(3)+"{\n")
++			f.write(indent(4)+"param_named specularPower float 8.0\n")
++			f.write(indent(3)+"}\n")
++			if self.mesh.vertexColors and False:
+ 				#TODO: Broken in Blender 2.36.
+ 				# Blender does not handle "texface" mesh with vertex colours
+ 				f.write(indent(3)+"diffuse vertexcolour\n")
+@@ -166,13 +179,41 @@
+ 				##f.write(indent(3) + "shading flat\n")
+ 				# texture
+ 				if (self.face.mode & Blender.Mesh.FaceModes['TEX']) and (self.face.image):
+-					f.write(indent(3)+"texture_unit\n")
++					f.write(indent(3)+"texture_unit baseMap\n")
+ 					f.write(indent(3)+"{\n")
+ 					f.write(indent(4)+"texture %s\n" % self.manager.registerTextureFile(self.face.image.filename))
+ 					f.write(indent(3)+"}\n") # texture_unit
++					if spectex:
++						f.write(indent(3)+"texture_unit specularMap\n")
++						f.write(indent(3)+"{\n")
++						if spectex.tex and spectex.tex.getImage():
++							f.write(indent(4)+"texture %s\n" % self.manager.registerTextureFile(spectex.tex.getImage().filename))
++						f.write(indent(3)+"}\n") # texture_unit
++
++				if (self.face.mode & Blender.Mesh.FaceModes['TEX']) and len(self.mesh.materials):
++					tex = self.findMapToTexture(mat, 'NOR')
++					if tex and tex.tex and tex.tex.getImage():
++						image = tex.tex.getImage()
++						f.write(indent(3)+"texture_unit normalMap\n")
++						f.write(indent(3)+"{\n")
++						f.write(indent(4)+"texture %s\n" % self.manager.registerTextureFile(image.filename))
++						f.write(indent(3)+"}\n") # texture_unit
++
+ 			f.write(indent(2)+"}\n") # pass
+ 			f.write(indent(1)+"}\n") # technique
+ 		return
++	def findMapToTexture(self, meshmat, mapto):
++		if not meshmat and len(self.mesh.materials):
++			meshmat = self.mesh.materials[0]
++		print "look for material", meshmat
++		if meshmat:
++			image = None
++			textures = meshmat.getTextures()
++			for tex in textures:
++				if tex and tex.mapto & Blender.Texture.MapTo[mapto]:
++					return tex
++			return image
++
+ 	# private
+ 	def _createName(self):
+ 		"""Create unique material name.
+Sólo en ogrepkg/: materialexport.pyc
+Sólo en ogrepkg/: .materialexport.py.swp
+diff -ru /home/caedes/src/ogre-1.7.0~ogredev6/Tools/BlenderExport/ogrepkg/meshexport.py ogrepkg/meshexport.py
+--- /home/caedes/src/ogre-1.7.0~ogredev6/Tools/BlenderExport/ogrepkg/meshexport.py	2009-11-24 12:46:11.000000000 +0100
++++ ogrepkg/meshexport.py	2010-06-27 08:05:04.000000000 +0200
+@@ -99,7 +99,7 @@
+ 			Log.getSingleton().logWarning("Error in normalize! Face of mesh \"%s\" too small." % bMesh.name)
+ 			self.normal = Vector([0,0,0])
+ 		## colourDiffuse
+-		if bMesh.vertexColors:
++		if bMesh.vertexColors and False:
+ 			bMCol = bMFace.col[bIndex]
+ 			if OGRE_OPENGL_VERTEXCOLOUR:
+ 				self.colourDiffuse = (bMCol.b/255.0, bMCol.g/255.0, bMCol.r/255.0, bMCol.a/255.0)
+@@ -121,8 +121,8 @@
+ 					pass
+ 				else:
+ 					# material assigned
+-					if ((bMaterial.mode & Blender.Material.Modes["VCOL_PAINT"])
+-						or (bMaterial.mode & Blender.Material.Modes["VCOL_LIGHT"])):
++					if bMaterial and ((bMaterial.mode & Blender.Material.Modes["VCOL_PAINT"])
++						or (bMaterial.mode & Blender.Material.Modes["VCOL_LIGHT"])) and False:
+ 						# vertex colours enabled
+ 						if OGRE_OPENGL_VERTEXCOLOUR:
+ 							self.colourDiffuse = (bMCol.b/255.0, bMCol.g/255.0, bMCol.r/255.0, bMCol.a/255.0)
+Sólo en ogrepkg/: meshexport.pyc

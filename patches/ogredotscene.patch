@@ -1,0 +1,60 @@
+--- /home/caedes/s/ogredotscene.py	2010-06-23 23:10:09.000000000 +0200
++++ /home/caedes/.blender/scripts/ogredotscene.py	2010-06-27 10:19:31.000000000 +0200
+@@ -1689,6 +1689,9 @@
+ 		self.rotX = BoundedValueModel(-1000.0, 1000.0, 0.0)
+ 		self.rotY = BoundedValueModel(-1000.0, 1000.0, 0.0)
+ 		self.rotZ = BoundedValueModel(-1000.0, 1000.0, 0.0)
++		self.transX = BoundedValueModel(-10000.0, 10000.0, 0.0)
++		self.transY = BoundedValueModel(-10000.0, 10000.0, 0.0)
++		self.transZ = BoundedValueModel(0.0, 255.0, 0.0)
+ 		self.scale = BoundedValueModel(0.0, 1e6, 1.0);
+ 		self.load()
+ 		return
+@@ -1700,6 +1703,13 @@
+ 		return self.rotZ.getValue()
+ 	def getScale(self):
+ 		return self.scale.getValue()
++	def getTransX(self):
++		return self.transX.getValue()
++	def getTransY(self):
++		return self.transY.getValue()
++	def getTransZ(self):
++		return self.transZ.getValue()
++
+ 	def load(self):
+ 		"""Load settings from registry, if available.
+ 		"""
+@@ -1720,6 +1730,13 @@
+ 				self.rotY.setValue(float(settingsDict['rotY']))
+ 			if settingsDict.has_key('rotZ'):
+ 				self.rotZ.setValue(float(settingsDict['rotZ']))
++			if settingsDict.has_key('transX'):
++				self.transX.setValue(float(settingsDict['transX']))
++			if settingsDict.has_key('transY'):
++				self.transY.setValue(float(settingsDict['transY']))
++			if settingsDict.has_key('transZ'):
++				self.transZ.setValue(float(settingsDict['transZ']))
++
+ 			if settingsDict.has_key('scale'):
+ 				self.scale.setValue(settingsDict['scale'])
+ 		return
+@@ -1734,6 +1751,9 @@
+ 		settingsDict['rotX'] = self.rotX.getValue()
+ 		settingsDict['rotY'] = self.rotY.getValue()
+ 		settingsDict['rotZ'] = self.rotZ.getValue()
++		settingsDict['transX'] = self.transX.getValue()
++		settingsDict['transY'] = self.transY.getValue()
++		settingsDict['transZ'] = self.transZ.getValue()
+ 		settingsDict['scale'] = self.scale.getValue()
+ 		Registry.SetKey('ogredotscene', settingsDict, True) 
+ 		return
+@@ -2682,7 +2702,8 @@
+ 			rotationMatrix = Mathutils.RotationMatrix(self.settings.rotX.getValue(), 4, 'x')
+ 			rotationMatrix *= Mathutils.RotationMatrix(self.settings.rotY.getValue(), 4, 'y')
+ 			rotationMatrix *= Mathutils.RotationMatrix(self.settings.rotZ.getValue(), 4, 'z')
+-		self.tree.export(self, fileObject, indent+1, scaleMatrix*rotationMatrix)
++		locationMatrix = Mathutils.TranslationMatrix(Mathutils.Vector([-self.settings.transX,-self.settings.transY,-self.settings.transZ,0]))
++		self.tree.export(self, fileObject, indent+1, locationMatrix*scaleMatrix*rotationMatrix)
+ 		fileObject.write(self._indent(indent) + "</nodes>\n")
+ 		return
+ 	def _writeExternals(self, fileObject, indent=0):
