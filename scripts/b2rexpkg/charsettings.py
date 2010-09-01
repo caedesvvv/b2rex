@@ -15,7 +15,6 @@ class CharacterSettings(ExportSettings):
     """Global export settings.
     """
     def __init__(self):
-        ExportSettings.__init__(self)
         self._properties = {'translation': 'extra translation for the avatar', 
                             'rotation': 'extra rotation for the avatar', 
                             'scale': 'extra scale for the avatar',
@@ -32,7 +31,8 @@ class CharacterSettings(ExportSettings):
         self.basebone = ''
         self.rootbone = ''
         self.baseoffset = '0 0 0'
-        self.load()
+        ExportSettings.__init__(self)
+        #self.load()
         return
     def getProperties(self):
         return self._properties
