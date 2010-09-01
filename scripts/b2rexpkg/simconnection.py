@@ -55,7 +55,7 @@ class SimConnection(object):
 if __name__ == "__main__":
     con = SimConnection()
     print con.connect("http://127.0.0.1:9000")
-    print con.login("caedes", "caedes", "nemesis")
+    #print con.login("caedes", "caedes", "nemesis")
     #a = con._con.search_for_region_by_name({"name":"Taiga"})
     #print con._con.user_alert({"name":"Taiga"})
     #print con._con.check({})

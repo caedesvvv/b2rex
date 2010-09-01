@@ -47,14 +47,14 @@ class Exporter(object):
         Export the scene to a zipfile.
         """
         b2rexpkg.start()
-	if exportSettings.regenMaterials:
-            reset_uuids(Blender.Material.Get())
-	if exportSettings.regenObjects:
-            reset_uuids(Blender.Object.Get())
-	if exportSettings.regenTextures:
-            reset_uuids(Blender.Texture.Get())
-	if exportSettings.regenMeshes:
-            reset_uuids(Blender.Mesh.Get())
+        if exportSettings.regenMaterials:
+                reset_uuids(Blender.Material.Get())
+        if exportSettings.regenObjects:
+                reset_uuids(Blender.Object.Get())
+        if exportSettings.regenTextures:
+                reset_uuids(Blender.Texture.Get())
+        if exportSettings.regenMeshes:
+                reset_uuids(Blender.Mesh.Get())
         self.ogre.export(path, pack_name, offset)
         f = open(os.path.join(path, pack_name + ".uuids"), 'w')
         b2rexpkg.write(f)

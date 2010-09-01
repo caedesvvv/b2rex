@@ -1,5 +1,5 @@
 """
-Main b2rex application class
+Main b2rex character application class
 """
 
 import os
@@ -10,8 +10,8 @@ from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 
 import Blender
 
-from b2rexpkg.exporter import Exporter
-from b2rexpkg.settings import ExportSettings
+from b2rexpkg.charexporter import CharacterExporter
+from b2rexpkg.charsettings import CharacterSettings
 
 from ogredotscene import Screen, HorizontalLayout
 from ogredotscene import NumberView, Widget, CheckBox
@@ -23,12 +23,12 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
-class RealxtendExporterApplication(Exporter):
+class RealxtendCharacterApplication(CharacterExporter):
     def __init__(self):
-        Exporter.__init__(self)
+        CharacterExporter.__init__(self)
         self.buttons = {}
         self.screen = Screen()
-        self.exportSettings = ExportSettings()
+        self.exportSettings = CharacterSettings()
         self.settings_visible = False
         self.region_uuid = ''
         self.regionLayout = None
@@ -41,17 +41,17 @@ class RealxtendExporterApplication(Exporter):
         """
         self.vLayout = VerticalLayout()
         self.buttonLayout = HorizontalLayout()
-        self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
+        #self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
         self.addButton('Export', self.buttonLayout, 'Export to disk')
         self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
-        settingsButton = CheckBox(RealxtendExporterApplication.ToggleSettingsAction(self),
+        settingsButton = CheckBox(RealxtendCharacterApplication.ToggleSettingsAction(self),
 			          self.settings_visible,
 				  'Settings',
 				  [100, 20],
 				  tooltip='Show Settings')
         self.buttonLayout.addWidget(settingsButton, 'SettingsButton')
         self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
-        self.screen.addWidget(Box(self.vLayout, 'realXtend exporter'), "layout")
+        self.screen.addWidget(Box(self.vLayout, 'realXtend character exporter'), "layout")
 
     def showSettings(self):
         """
@@ -59,27 +59,30 @@ class RealxtendExporterApplication(Exporter):
         """
         self.settingsLayout = VerticalLayout()
         self.vLayout.addWidget(self.settingsLayout, 'settingsLayout')
-        self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
+        #self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
         self.addSettingsButton('path', self.settingsLayout, 'path to export to')
-        self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
-        posControls = HorizontalLayout()
-        uuidControls = HorizontalLayout()
-        self.settingsLayout.addWidget(posControls, 'posControls')
-        self.settingsLayout.addWidget(uuidControls, 'uuidControls')
-        posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the x axis.'), 'locX')
-        posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the y axis.'), 'locY')
-        posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
-            tooltip='Additional offset on the z axis.'), 'locZ')
-        for objtype in ['Objects', 'Meshes', 'Materials', 'Textures']:
-            keyName = 'regen' + objtype
-            settingToggle = CheckBox(RealxtendExporterApplication.ToggleSettingAction(self, objtype),
-				          getattr(self.exportSettings, keyName),
-					  'Regen ' + objtype,
-					  [100, 20],
-					  tooltip='Regenerate uuids for ' + objtype)
-            uuidControls.addWidget(settingToggle, keyName)
+        #self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
+        properties = self.exportSettings.getProperties()
+        for prop in properties.keys():
+            self.addSettingsButton(prop, self.settingsLayout, properties[prop])
+            #posControls = HorizontalLayout()
+            #uuidControls = HorizontalLayout()
+        #self.settingsLayout.addWidget(posControls, 'posControls')
+        #self.settingsLayout.addWidget(uuidControls, 'uuidControls')
+        #posControls.addWidget(NumberView('OffsetX:', self.exportSettings.locX, [100, 20], [Widget.INFINITY, 20], 
+        #    tooltip='Additional offset on the x axis.'), 'locX')
+        #posControls.addWidget(NumberView('OffsetY:', self.exportSettings.locY, [100, 20], [Widget.INFINITY, 20], 
+        #    tooltip='Additional offset on the y axis.'), 'locY')
+        #posControls.addWidget(NumberView('OffsetZ:', self.exportSettings.locZ, [100, 20], [Widget.INFINITY, 20], 
+        #    tooltip='Additional offset on the z axis.'), 'locZ')
+        #for objtype in ['Objects', 'Meshes', 'Materials', 'Textures']:
+            #    keyName = 'regen' + objtype
+            #settingToggle = CheckBox(RealxtendCharacterApplication.ToggleSettingAction(self, objtype),
+            #		          getattr(self.exportSettings, keyName),
+            #			  'Regen ' + objtype,
+            #			  [100, 20],
+            #			  tooltip='Regenerate uuids for ' + objtype)
+            #uuidControls.addWidget(settingToggle, keyName)
  
     def toggleSettings(self):
         """
@@ -123,7 +126,7 @@ class RealxtendExporterApplication(Exporter):
         """
         val = getattr(self.exportSettings, button_name)
         self.buttons[button_name] = StringButton(val,
-                                    RealxtendExporterApplication.ChangeSettingAction(self,
+                                    RealxtendCharacterApplication.ChangeSettingAction(self,
                                                                                      button_name),
                                                  button_name+": ", [200, 20], tooltip)
         layout.addWidget(self.buttons[button_name], 'buttonPanelButton' + button_name)
@@ -133,7 +136,7 @@ class RealxtendExporterApplication(Exporter):
         Add a button to the interface. This function prelinks
         the button to an action on this clss.
         """
-        action = getattr(RealxtendExporterApplication, button_name + 'Action')
+        action = getattr(RealxtendCharacterApplication, button_name + 'Action')
         return layout.addWidget(Button(action(self),
                            button_name, [100, 20], tooltip),
                            button_name + 'Button')
@@ -324,8 +327,8 @@ class RealxtendExporterApplication(Exporter):
             self.app = app
 
         def execute(self):
-            exportAction = RealxtendExporterApplication.ExportAction(self.app)
-            uploadAction = RealxtendExporterApplication.UploadAction(self.app)
+            exportAction = RealxtendCharacterApplication.ExportAction(self.app)
+            uploadAction = RealxtendCharacterApplication.UploadAction(self.app)
             if not exportAction.execute() == False:
                 Blender.Draw.Draw()
                 uploadAction.execute()
