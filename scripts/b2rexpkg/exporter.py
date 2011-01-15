@@ -17,12 +17,12 @@ class Exporter(object):
         self.sim = SimConnection()
         self.ogre = OgreExporter()
 
-    def connect(self, base_url):
+    def connect(self, base_url, username="", password=""):
         """
         Connect to an opensim instance
         """
-        self.gridinfo.connect(base_url)
-        print self.sim.connect(base_url)
+        self.gridinfo.connect(base_url, username, password)
+        self.sim.connect(base_url)
 
     def test(self):
         """

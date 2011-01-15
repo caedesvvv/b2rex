@@ -24,7 +24,7 @@ class SimConnection(object):
                                       'web_login_key':'unknownrex',
                                           'passwd':passwd,
                                           'start':'home'})
-	print r
+        print r
         self.session_id = r['session_id']
         self.avatar_uuid = r['agent_id']
         return r
@@ -55,18 +55,29 @@ class SimConnection(object):
 if __name__ == "__main__":
     con = SimConnection()
     print con.connect("http://127.0.0.1:9000")
-    #print con.login("caedes", "caedes", "nemesis")
     #a = con._con.search_for_region_by_name({"name":"Taiga"})
     #print con._con.user_alert({"name":"Taiga"})
     #print con._con.check({})
     scenedata = con._con.ogrescene_list({"RegionID":"0a1b14b9-ca02-481d-bf77-9cbeca1ab050"})
+    last_asset = None
     for groupid, scenegroup in scenedata['res'].iteritems():
-        print " *", groupid, scenegroup
-        if "materials" in scenegroup:
+        #print " *", scenegroup["name"],scenegroup["asset"],   scenegroup["groupid"], scenegroup["primcount"],"\n"
+        print groupid,scenegroup
+        last_asset = scenegroup["asset"]
+        assetdata = con._con.ogrescene_getasset({"assetid":last_asset})
+        #print assetdata["res"]
+        if assetdata:
+            assetdata = assetdata["res"]
+            print " *", scenegroup["name"], assetdata["name"],            assetdata["type"], len(assetdata["asset"].data), last_asset
+        else:
+            print " *", scenegroup["name"]
+        if False: #"materials" in scenegroup:
             for mat in scenegroup['materials'].values():
                 if isinstance(mat, xmlrpclib.Binary):
                     #                   print mat.decode()
                     print mat.data
+    assetdata = con._con.ogrescene_getasset({"assetid":last_asset})
+    print assetdata["res"]
     #a = con._con.admin_create_region({"password":"unknownrex",
     #                                  "region_name":"test2", "region_master_first":"caedes","region_master_last":"caedes","region_master_password":"caedes","external_address":"127.0.0.1","listen_ip":"127.0.0.1","listen_port":9002,"region_x":999,"region_y":1001})
     #con._con.admin_delete_region({"password":"unknownrex",

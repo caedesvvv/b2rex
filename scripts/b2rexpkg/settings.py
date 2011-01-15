@@ -8,14 +8,19 @@ import Blender
 from Blender import Registry
 
 from ogredotscene import BoundedValueModel
+from passmanager import PasswordManager
 
 #from ogredotscene import BoundedValueModel
 class ExportSettings:
     """Global export settings.
     """
+    properties = ['path', 'pack', 'server_url', 'export_dir']
     def __init__(self):
+        self.credentials = PasswordManager("b2rex")
         self.path = os.path.dirname(Blender.Get('filename'))
         self.pack = 'pack'
+        self.username = ''
+        self.password = ''
         self.server_url = 'http://delirium:9000'
         self.export_dir = ''
         self.locX = BoundedValueModel(-10000.0, 10000.0, 128.0)
@@ -48,8 +53,11 @@ class ExportSettings:
                 keyName = 'regen' + prop
                 if settingsDict.has_key(keyName):
                     setattr(self, keyName, settingsDict[keyName])
-            for prop in ['path', 'pack', 'server_url', 'export_dir']:
-                setattr(self, prop, settingsDict[prop])
+            for prop in self.properties:
+                if settingsDict.has_key(prop):
+                    setattr(self, prop, settingsDict[prop])
+            if self.server_url:
+                self.username, self.password = self.credentials.get_credentials(self.server_url)
             if settingsDict.has_key('locX'):
                 try:
                     self.locX.setValue(float(settingsDict['locX']))
@@ -69,10 +77,12 @@ class ExportSettings:
         """Save settings to registry.
         """
         settingsDict = {}
-        settingsDict['path'] = self.path
-        settingsDict['pack'] = self.pack
-        settingsDict['server_url'] = self.server_url
-        settingsDict['export_dir'] = self.export_dir
+        for prop in self.properties:
+            settingsDict[prop] = getattr(self, prop)
+        if self.username and self.password:
+            self.credentials.set_credentials(self.server_url,
+                                             self.username,
+                                             self.password)
         settingsDict['locX'] = self.locX.getValue()
         settingsDict['locY'] = self.locY.getValue()
         settingsDict['locZ'] = self.locZ.getValue()

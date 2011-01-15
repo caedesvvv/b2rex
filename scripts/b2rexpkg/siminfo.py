@@ -35,15 +35,21 @@ class GridInfo(RestConnector):
             self._regions[region['id']]['map'] = map_url
         return self._regions
 
-
+    def getAsset(self, uuid):
+        return self.httpObjGet("/admin/assets/"+uuid)
 
 if __name__ == '__main__':
     base_url = "http://127.0.0.1:9000"
     gridinfo = GridInfo()
-    gridinfo.connect(base_url)
+    gridinfo.connect(base_url, "caedes caedes", "XXXX")
     print gridinfo.getGridInfo()["gridnick"]
     regions = gridinfo.getRegions()
     for id in regions:
         region = regions[id]
         print " *", region["name"], region["x"], region["y"], id
+    asset = gridinfo.getAsset("69e2f587-4bbd-4ec7-8e1f-8b03601d218e")
+    print asset["name"]
+    import tools.oimporter
+    #tools.oimporter.parse(asset["data"])
+    #   print struct.unpack_from(">H",asset["data"])
 

@@ -11,6 +11,7 @@ from b2rexpkg.tools.selectable import SelectablePack, SelectableRegion
 import Blender
 
 from b2rexpkg.exporter import Exporter
+from b2rexpkg.importer import Importer
 from b2rexpkg.settings import ExportSettings
 
 from ogredotscene import Screen, HorizontalLayout
@@ -23,9 +24,10 @@ ERROR = 0
 OK = 1
 IMMEDIATE = 2
 
-class RealxtendExporterApplication(Exporter):
+class RealxtendExporterApplication(Exporter, Importer):
     def __init__(self):
         Exporter.__init__(self)
+        Importer.__init__(self, self.gridinfo)
         self.buttons = {}
         self.screen = Screen()
         self.exportSettings = ExportSettings()
@@ -62,6 +64,8 @@ class RealxtendExporterApplication(Exporter):
         self.addSettingsButton('pack', self.settingsLayout, 'name for the main world files')
         self.addSettingsButton('path', self.settingsLayout, 'path to export to')
         self.addSettingsButton('server_url', self.settingsLayout, 'server login url')
+        self.addSettingsButton('username', self.settingsLayout, 'server login username')
+        self.addSettingsButton('password', self.settingsLayout, 'server login password')
         posControls = HorizontalLayout()
         uuidControls = HorizontalLayout()
         self.settingsLayout.addWidget(posControls, 'posControls')
@@ -103,9 +107,15 @@ class RealxtendExporterApplication(Exporter):
             self.addButton("ExportUpload", hLayout, 'Export scene and upload to opensim region')
             self.addButton("Upload", hLayout, 'Upload previously exported scene')
             self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
+            self.addButton("Check", hLayout, 'Check blend file against region contents')
+            self.addButton("Sync", hLayout, 'Sync blend file objects from region')
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
-
+        self.regionInfoLayout = VerticalLayout()
+        self.regionLayout.addWidget(self.regionInfoLayout, "regionInfoLayout")
+        self.regionInfoLayout.addWidget(Label(" \n"),
+                                        "regionInfoSpace")
+        self.regionInfoLayout.addWidget(Label("\n"+region_uuid), "regionInfo")
     def addStatus(self, text, level = OK):
         """
         Add status information.
@@ -172,6 +182,19 @@ class RealxtendExporterApplication(Exporter):
              vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
         return griddata
 
+    def checkAction(self):
+        text = self.check_region(self.region_uuid)
+        self.regionInfoLayout = VerticalLayout()
+        self.regionLayout.addWidget(self.regionInfoLayout, "regionInfoLayout")
+        for idx, line in enumerate(text):
+            self.regionInfoLayout.addWidget(Label(line),
+                                        "regionInfoSpace"+str(idx))
+        Blender.Draw.Draw()
+
+    def syncAction(self):
+        text = self.sync_region(self.region_uuid)
+        Blender.Draw.Draw()
+
     def clearAction(self):
         """
         Clear Action
@@ -209,7 +232,8 @@ class RealxtendExporterApplication(Exporter):
         """
         base_url = self.exportSettings.server_url
         self.addStatus("Connecting to " + base_url, IMMEDIATE)
-        self.connect(base_url)
+        self.connect(base_url, self.exportSettings.username,
+                     self.exportSettings.password)
         self.region_uuid = ''
         self.regionLayout = None
         try:
@@ -217,6 +241,7 @@ class RealxtendExporterApplication(Exporter):
             griddata = self.gridinfo.getGridInfo()
         except:
             self.addStatus("Error: couldnt connect to " + base_url, ERROR)
+            traceback.print_exc()
             return
         self.addRegionsPanel(regions, griddata)
         # create the regions panel
@@ -266,6 +291,7 @@ class RealxtendExporterApplication(Exporter):
         def execute(self):
             setattr(self.app.exportSettings, self.name,
                     self.app.buttons[self.name].string.val)
+            self.app.exportSettings.save()
 
     class QuitAction(Action):
         """
@@ -371,6 +397,34 @@ class RealxtendExporterApplication(Exporter):
         def execute(self):
             try:
                 self.app.clearAction()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt clear", ERROR)
+                return False
+    class CheckAction(Action):
+        """
+        Check the selected scene.
+        """
+        def __init__(self, app):
+            self.app = app
+
+        def execute(self):
+            try:
+                self.app.checkAction()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt clear", ERROR)
+                return False
+    class SyncAction(Action):
+        """
+        Check the selected scene.
+        """
+        def __init__(self, app):
+            self.app = app
+
+        def execute(self):
+            try:
+                self.app.syncAction()
             except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt clear", ERROR)

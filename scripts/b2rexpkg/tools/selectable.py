@@ -20,13 +20,11 @@ class SelectableRegion(Selectable):
         self._pack = pack
         self._pack.add(self)
     def setSelected(self, value):
-        print self.region_uuid
         if value:
             self._pack.reset()
         self.app.setRegion(self.region_uuid)
         return Selectable.setSelected(self, value)
     def select(self):
-        print self.region_uuid
         self._pack.reset()
         self.app.setRegion(self.region_uuid)
         return Selectable.select(self)
