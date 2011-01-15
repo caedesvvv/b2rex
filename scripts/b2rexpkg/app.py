@@ -109,6 +109,7 @@ class RealxtendExporterApplication(Exporter, Importer):
             self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
             self.addButton("Check", hLayout, 'Check blend file against region contents')
             self.addButton("Sync", hLayout, 'Sync blend file objects from region')
+            self.addButton("Import", hLayout, 'Import all objects from current region')
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
         self.regionInfoLayout = VerticalLayout()
@@ -193,6 +194,10 @@ class RealxtendExporterApplication(Exporter, Importer):
 
     def syncAction(self):
         text = self.sync_region(self.region_uuid)
+        Blender.Draw.Draw()
+
+    def importAction(self):
+        text = self.import_region(self.region_uuid)
         Blender.Draw.Draw()
 
     def clearAction(self):
@@ -413,7 +418,7 @@ class RealxtendExporterApplication(Exporter, Importer):
                 self.app.checkAction()
             except:
                 traceback.print_exc()
-                self.app.addStatus("Error: couldnt clear", ERROR)
+                self.app.addStatus("Error: couldnt check", ERROR)
                 return False
     class SyncAction(Action):
         """
@@ -427,6 +432,20 @@ class RealxtendExporterApplication(Exporter, Importer):
                 self.app.syncAction()
             except:
                 traceback.print_exc()
-                self.app.addStatus("Error: couldnt clear", ERROR)
+                self.app.addStatus("Error: couldnt sync", ERROR)
+                return False
+    class ImportAction(Action):
+        """
+        Check the selected scene.
+        """
+        def __init__(self, app):
+            self.app = app
+
+        def execute(self):
+            try:
+                self.app.importAction()
+            except:
+                traceback.print_exc()
+                self.app.addStatus("Error: couldnt import", ERROR)
                 return False
 

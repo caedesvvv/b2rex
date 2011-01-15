@@ -33,6 +33,7 @@ class Importer(object):
         self.gridinfo = gridinfo
         self._imported_assets = {}
         self._imported_materials = {}
+
     def import_texture(self, texture):
         if texture in self._imported_assets:
             return self._imported_assets[texture]
@@ -90,6 +91,7 @@ class Importer(object):
                 self.import_material(material, retries-1)
 
     def import_mesh(self, scenegroup):
+        print "gpon3"
         if scenegroup["asset"] in self._imported_assets:
             return self._imported_assets[scenegroup["asset"]]
         materials = scenegroup["materials"].keys()
@@ -104,6 +106,7 @@ class Importer(object):
         if not mesh:
             print "error loading",scenegroup["asset"]
             return
+        print "gpon"
         new_mesh = Blender.NMesh.New(asset["name"])
         self._imported_assets[scenegroup["asset"]] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
@@ -194,7 +197,7 @@ class Importer(object):
             obj.setEuler(-euler[0]*r, euler[1]*r, (euler[2]-180.0)*r)
         obj.setSize(scale[0], scale[1], scale[2])
         obj.properties['opensim'] = {}
-        obj.properties['opensim']['uuid'] = str(scenegroup["groupid"])
+        obj.properties['opensim']['uuid'] = str(scenegroup["id"])
         return obj
 
     def import_group(self, groupid, scenegroup, retries,
@@ -297,6 +300,7 @@ class Importer(object):
     def sync_region(self, region_id):
         self._objects = {}
         self._imported_assets = {}
+        self._imported_materials = {}
         self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
@@ -310,12 +314,12 @@ class Importer(object):
             obj_uuid = str(self.get_uuid(obj))
             if obj_uuid:
                 if obj_uuid in scenedata:
-                    #print scenedata[obj_uuid]
                     self.import_group(obj_uuid, scenedata[obj_uuid], 10)
 
     def import_region(self, region_id, action="import"):
         self._objects = {}
         self._imported_assets = {}
+        self._imported_materials = {}
         self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
