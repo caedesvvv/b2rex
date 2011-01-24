@@ -17,6 +17,7 @@ import math
 from tools.oimporter.otypes import VES_POSITION, VES_NORMAL, VES_TEXTURE_COORDINATES
 from tools.oimporter.util import arr2float, parse_vector, get_vertex_legend
 from tools.oimporter.util import get_nor, get_uv, mat_findtextures, get_vcoords
+from tools.oimporter.omaterial import OgreMaterial
 
 import socket
 import traceback
@@ -31,8 +32,12 @@ socket.setdefaulttimeout(default_timeout)
 class Importer(object):
     def __init__(self, gridinfo):
         self.gridinfo = gridinfo
+        self.init_structures()
+
+    def init_structures(self):
         self._imported_assets = {}
         self._imported_materials = {}
+        self._imported_ogre_materials = {}
 
     def import_texture(self, texture):
         if texture in self._imported_assets:
@@ -68,36 +73,71 @@ class Importer(object):
                     except:
                         print "error opening:", dest
 
+    def create_blender_material(self, ogremat, mat):
+        textures = ogremat.textures
+        bmat = None
+        idx = 0
+        mat_name = mat["name"].split("/")[0]
+        try:
+            bmat = Blender.Material.Get(mat_name)
+        except:
+            bmat = Blender.Material.New(mat_name)
+        # material base properties
+        if ogremat.doambient:
+            bmat.setAmb(ogremat.ambient)
+        if ogremat.specular:
+            bmat.setSpec(1.0)
+            bmat.setSpecCol(ogremat.specular[:3])
+            bmat.setHardness(int(ogremat.specular[3]*4.0))
+        if ogremat.alpha < 1.0:
+            bmat.setAlpha(ogremat.alpha)
+        # specular
+        layerMappings = {'normalMap':'NOR',
+                         'heightMap':'DISP',
+                         'reflectionMap':'REF',
+                         'opacityMap':'ALPHA',
+                         'lightMap':'AMB',
+                         'specularMap':'SPEC' }
+        for layerName, textureName in ogremat.layers.iteritems():
+            if layerName == 'shadowMap':
+                bmat.setMode(Blender.Material.Modes['SHADOWBUF'] & bmat.getMode())
+            if textureName:
+                btex = self.import_texture(textureName)
+                if btex:
+                    mapto = 'COL'
+                    if layerName in layerMappings:
+                        mapto = layerMappings[layerName]
+                    if mapto == 'COL':
+                        ogremat.btex = btex
+                    if mapto:
+                        mapto = Blender.Texture.MapTo[mapto]
+                    bmat.setTexture(idx, btex, Blender.Texture.TexCo.ORCO, mapto) 
+                    idx += 1
+        self._imported_materials[mat["name"]] = bmat
+        return bmat
+
     def import_material(self, material, retries):
         btex = None
+        bmat = None
         gridinfo = self.gridinfo
         try:
-            bmat = None
             if material in self._imported_assets:
                 bmat = self._imported_assets[material]
             else:
             # XXX should check on library and refresh if its there
                 mat = gridinfo.getAsset(material)
-                textures = mat_findtextures(mat)
-                for texture in textures:
-                    btex = self.import_texture(texture)
-                    if btex:
-                        bmat = Blender.Material.New(mat["name"])
-                        bmat.setTexture(0, btex) 
-                        self._imported_assets[material] = bmat
-                        self._imported_materials[mat["name"]] = bmat
+                ogremat = OgreMaterial(mat)
+                self._imported_ogre_materials[mat["name"]] = ogremat
+                bmat = self.create_blender_material(ogremat, mat)
+                self._imported_assets[material] = bmat
         except CONNECTION_ERRORS:
             if retries > 0:
-                self.import_material(material, retries-1)
+                return self.import_material(material, retries-1)
+        return bmat
 
     def import_mesh(self, scenegroup):
-        print "gpon3"
         if scenegroup["asset"] in self._imported_assets:
             return self._imported_assets[scenegroup["asset"]]
-        materials = scenegroup["materials"].keys()
-        for material in materials:
-            if not material == "00000000-0000-0000-0000-000000000000":
-                self.import_material(material, 10)
         asset = self.gridinfo.getAsset(scenegroup["asset"])
         if not asset["type"] == "43":
             print "("+asset["type"]+")"
@@ -106,7 +146,6 @@ class Importer(object):
         if not mesh:
             print "error loading",scenegroup["asset"]
             return
-        print "gpon"
         new_mesh = Blender.NMesh.New(asset["name"])
         self._imported_assets[scenegroup["asset"]] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
@@ -121,10 +160,10 @@ class Importer(object):
         image = None
         if materialName in self._imported_materials:
             bmat = self._imported_materials[materialName]
-        if bmat and bmat.textures:
-            btex = bmat.textures[0]
-            if btex and btex.tex and btex.tex.image:
-                image = btex.tex.image 
+        if materialName in self._imported_ogre_materials:
+            ogremat = self._imported_ogre_materials[materialName]
+            if ogremat.btex and ogremat.btex.image:
+                image = ogremat.btex.image
         if VES_TEXTURE_COORDINATES in vertex_legend:
             uvco_offset = vertex_legend[VES_TEXTURE_COORDINATES][1]
         vertmaps = {}
@@ -202,6 +241,12 @@ class Importer(object):
 
     def import_group(self, groupid, scenegroup, retries,
                      offset_x=128.0, offset_y=128.0, offset_z=20.0):
+        materials = []
+        for material in scenegroup["materials"].keys():
+            if not material == "00000000-0000-0000-0000-000000000000":
+                bmat = self.import_material(material, 10)
+                materials.append(bmat)
+
         try:
             new_mesh = None
             scenegroup["id"] = groupid
@@ -219,11 +264,14 @@ class Importer(object):
                 new_mesh.properties['opensim'] = {}
                 new_mesh.properties['opensim']['uuid'] = str(scenegroup["asset"])
                 scene = Blender.Scene.GetCurrent ()
+                new_mesh.setMaterials(materials)
                 try:
                     scene.link(obj)
                 except RuntimeError:
                     pass # object already in scene
                 new_mesh.update()
+                #obj.makeDisplayList()
+                #new_mesh.hasVertexColours(True) # for now we create them as blender does
         except CONNECTION_ERRORS:
             if retries > 0:
                 sys.stderr.write("_")
@@ -253,8 +301,8 @@ class Importer(object):
             pass
         else:
             for obj in getter():
-                if section == "meshes":
-                    print obj
+                #if section == "meshes":
+                    #    print obj
                 obj_uuid = self.get_uuid(obj)
                 if obj_uuid:
                     self._total[section][obj_uuid] = obj.name
@@ -276,7 +324,7 @@ class Importer(object):
 
     def check_region(self, region_id, action="check"):
         self._objects = {}
-        self._imported_assets = {}
+        self.init_structures()
         self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
@@ -299,8 +347,7 @@ class Importer(object):
 
     def sync_region(self, region_id):
         self._objects = {}
-        self._imported_assets = {}
-        self._imported_materials = {}
+        self.init_structures()
         self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
@@ -318,8 +365,7 @@ class Importer(object):
 
     def import_region(self, region_id, action="import"):
         self._objects = {}
-        self._imported_assets = {}
-        self._imported_materials = {}
+        self.init_structures()
         self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
