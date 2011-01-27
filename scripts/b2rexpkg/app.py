@@ -4,7 +4,6 @@ Main b2rex application class
 
 import os
 import tempfile, shutil
-import traceback
 import b2rexpkg
 
 import Blender
