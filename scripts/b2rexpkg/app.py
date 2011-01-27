@@ -207,8 +207,8 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
             self.app = app
 
         def execute(self):
-            if not self.app.doExportAction() == False:
+            if not self.app.onExportAction() == False:
                 Blender.Draw.Draw()
-                self.app.doUploadAction()
+                self.app.onUploadAction()
 
 
