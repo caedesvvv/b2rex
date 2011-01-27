@@ -39,6 +39,11 @@ class Importer(object):
         self._imported_materials = {}
         self._imported_ogre_materials = {}
 
+        self._objects = {}
+        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
+        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
+        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
+
     def import_texture(self, texture):
         if texture in self._imported_assets:
             return self._imported_assets[texture]
@@ -240,12 +245,14 @@ class Importer(object):
         return obj
 
     def import_group(self, groupid, scenegroup, retries,
-                     offset_x=128.0, offset_y=128.0, offset_z=20.0):
+                     offset_x=128.0, offset_y=128.0, offset_z=20.0,
+                     load_materials=True):
         materials = []
-        for material in scenegroup["materials"].keys():
-            if not material == "00000000-0000-0000-0000-000000000000":
-                bmat = self.import_material(material, 10)
-                materials.append(bmat)
+        if load_materials:
+           for material in scenegroup["materials"].keys():
+                if not material == "00000000-0000-0000-0000-000000000000":
+                    bmat = self.import_material(material, 10)
+                    materials.append(bmat)
 
         try:
             new_mesh = None
@@ -264,7 +271,8 @@ class Importer(object):
                 new_mesh.properties['opensim'] = {}
                 new_mesh.properties['opensim']['uuid'] = str(scenegroup["asset"])
                 scene = Blender.Scene.GetCurrent ()
-                new_mesh.setMaterials(materials)
+                if load_materials:
+                    new_mesh.setMaterials(materials)
                 try:
                     scene.link(obj)
                 except RuntimeError:
@@ -272,11 +280,12 @@ class Importer(object):
                 new_mesh.update()
                 #obj.makeDisplayList()
                 #new_mesh.hasVertexColours(True) # for now we create them as blender does
+                return obj
         except CONNECTION_ERRORS:
             if retries > 0:
                 sys.stderr.write("_")
                 sys.stderr.flush()
-                self.import_group(groupid, scenegroup, retries-1)
+                return self.import_group(groupid, scenegroup, retries-1)
             else:
                 traceback.print_exc()
                 sys.stderr.write("!"+scenegroup["asset"])
@@ -323,11 +332,7 @@ class Importer(object):
         self._total_server["meshes"] += 1
 
     def check_region(self, region_id, action="check"):
-        self._objects = {}
         self.init_structures()
-        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
@@ -346,11 +351,7 @@ class Importer(object):
         return report
 
     def sync_region(self, region_id):
-        self._objects = {}
         self.init_structures()
-        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})["res"]
@@ -364,16 +365,13 @@ class Importer(object):
                     self.import_group(obj_uuid, scenedata[obj_uuid], 10)
 
     def import_region(self, region_id, action="import"):
-        self._objects = {}
         self.init_structures()
-        self._found = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total_server = {"objects":0,"meshes":0,"materials":0,"textures":0}
-        self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
         con = SimConnection()
         con.connect(self.gridinfo._url)
         scenedata = con._con.ogrescene_list({"RegionID":region_id})
         for groupid, scenegroup in scenedata['res'].iteritems():
             getattr(self, action+"_group")(groupid, scenegroup, 10)
+            Blender.Window.Redraw(Blender.Window.Types['VIEW3D'])
 
 
 if __name__ == '__main__':
