@@ -41,8 +41,8 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
             title = 'realXtend exporter'
         self.vLayout = VerticalLayout()
         self.buttonLayout = HorizontalLayout()
-        self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
-        self.addButton('Export', self.buttonLayout, 'Export to disk')
+        self.addCallbackButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
+        self.addCallbackButton('Export', self.buttonLayout, 'Export to disk')
         self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
         settingsButton = CheckBox(RealxtendExporterApplication.ToggleSettingsAction(self),
 			          self.settings_visible,
@@ -92,11 +92,11 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
             hLayout = HorizontalLayout()
             self.regionLayout.addWidget(hLayout, "regionButtons")
             self.addButton("ExportUpload", hLayout, 'Export scene and upload to opensim region')
-            self.addButton("Upload", hLayout, 'Upload previously exported scene')
-            self.addButton("Clear", hLayout, 'Clear the selected region in the opensim server')
-            self.addButton("Check", hLayout, 'Check blend file against region contents')
-            self.addButton("Sync", hLayout, 'Sync blend file objects from region')
-            self.addButton("Import", hLayout, 'Import all objects from current region')
+            self.addCallbackButton("Upload", hLayout, 'Upload previously exported scene')
+            self.addCallbackButton("Clear", hLayout, 'Clear the selected region in the opensim server')
+            self.addCallbackButton("Check", hLayout, 'Check blend file against region contents')
+            self.addCallbackButton("Sync", hLayout, 'Sync blend file objects from region')
+            self.addCallbackButton("Import", hLayout, 'Import all objects from current region')
         self.region_uuid = region_uuid
         self.addStatus("Region set to " + region_uuid)
         self.regionInfoLayout = VerticalLayout()
@@ -117,7 +117,7 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
                 zfile.write(file_path, file_path[len(from_path+"/"):])
         zfile.close()
 
-    def checkAction(self):
+    def onCheckAction(self):
         text = self.check_region(self.region_uuid)
         self.regionInfoLayout = VerticalLayout()
         self.regionLayout.addWidget(self.regionInfoLayout, "regionInfoLayout")
@@ -126,15 +126,15 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
                                         "regionInfoSpace"+str(idx))
         Blender.Draw.Draw()
 
-    def syncAction(self):
+    def onSyncAction(self):
         text = self.sync_region(self.region_uuid)
         Blender.Draw.Draw()
 
-    def importAction(self):
+    def onImportAction(self):
         text = self.import_region(self.region_uuid)
         Blender.Draw.Draw()
 
-    def clearAction(self):
+    def onClearAction(self):
         """
         Clear Action
         """
@@ -146,7 +146,7 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
         self.sim.sceneClear(self.region_uuid, pack_name)
         self.addStatus("Scene cleared " + self.region_uuid)
 
-    def uploadAction(self):
+    def onUploadAction(self):
         """
         Upload Action
         """
@@ -165,28 +165,7 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
         else:
             self.addStatus("Error: Something went wrong uploading", ERROR)
 
-    def connectAction(self):
-        """
-        Connect Action
-        """
-        base_url = self.exportSettings.server_url
-        self.addStatus("Connecting to " + base_url, IMMEDIATE)
-        self.connect(base_url, self.exportSettings.username,
-                     self.exportSettings.password)
-        self.region_uuid = ''
-        self.regionLayout = None
-        try:
-            regions = self.gridinfo.getRegions()
-            griddata = self.gridinfo.getGridInfo()
-        except:
-            self.addStatus("Error: couldnt connect to " + base_url, ERROR)
-            traceback.print_exc()
-            return
-        self.addRegionsPanel(regions, griddata)
-        # create the regions panel
-        self.addStatus("Connected to " + griddata['gridnick'])
-
-    def exportAction(self):
+    def onExportAction(self):
         """
         Export Action
         """
@@ -228,97 +207,8 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
             self.app = app
 
         def execute(self):
-            exportAction = RealxtendExporterApplication.ExportAction(self.app)
-            uploadAction = RealxtendExporterApplication.UploadAction(self.app)
-            if not exportAction.execute() == False:
+            if not self.app.doExportAction() == False:
                 Blender.Draw.Draw()
-                uploadAction.execute()
+                self.app.doUploadAction()
 
-    class ExportAction(Action):
-        """
-        Export selected objects.
-        """
-        def __init__(self, app):
-            self.app = app
-            return
-
-        def execute(self):
-            try:
-                self.app.exportAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt export", ERROR)
-                return False
-
-    class UploadAction(Action):
-        """
-        Upload a previously exported world.
-        """
-        def __init__(self, exportSettings):
-            self.app = exportSettings
-
-        def execute(self):
-            try:
-                self.app.uploadAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt upload", ERROR)
-                return False
-
-    class ClearAction(Action):
-        """
-        Clear the selected scene.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.clearAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt clear", ERROR)
-                return False
-    class CheckAction(Action):
-        """
-        Check the selected scene.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.checkAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt check", ERROR)
-                return False
-    class SyncAction(Action):
-        """
-        Check the selected scene.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.syncAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt sync", ERROR)
-                return False
-    class ImportAction(Action):
-        """
-        Check the selected scene.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.importAction()
-            except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt import", ERROR)
-                return False
 

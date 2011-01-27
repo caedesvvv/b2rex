@@ -39,7 +39,7 @@ class BaseApplication(object):
         """
         self.vLayout = VerticalLayout()
         self.buttonLayout = HorizontalLayout()
-        self.addButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
+        self.addCallbackButton('Connect', self.buttonLayout, 'Connect to opensim server. Needed if you want to upload worlds directly.')
         #self.addButton('Export', self.buttonLayout, 'Export to disk')
         self.addButton('Quit', self.buttonLayout, 'Quit the exporter')
         self.vLayout.addWidget(self.buttonLayout, 'buttonPanel')
@@ -108,7 +108,7 @@ class BaseApplication(object):
              vLayout.addWidget(SelectableLabel(selectable, region['name']),'region_'+key)
         return griddata
 
-    def connectAction(self):
+    def onConnectAction(self):
         """
         Connect Action
         """
@@ -225,21 +225,6 @@ class BaseApplication(object):
 	    except:
                 traceback.print_exc()
                 self.app.addStatus("Error: couldnt rum. Check your settings to see they are ok", ERROR)
-                return False
-
-    class ConnectAction(Action):
-        """
-        Connect to the opensim server.
-        """
-        def __init__(self, app):
-            self.app = app
-
-        def execute(self):
-            try:
-                self.app.connectAction()
-	    except:
-                traceback.print_exc()
-                self.app.addStatus("Error: couldnt connect. Check your settings to see they are ok", ERROR)
                 return False
 
     class QuitAction(Action):
