@@ -41,7 +41,8 @@ class GridInfo(RestConnector):
 if __name__ == '__main__':
     base_url = "http://127.0.0.1:9000"
     gridinfo = GridInfo()
-    gridinfo.connect(base_url, "caedes caedes", "XXXX")
+    gridinfo.connect(base_url, "caedes caedes", "nemesis")
+    print gridinfo.httpXmlGet("//7a4ebc0f-cbde-4904-a0e6-ab9b5295d7e0")
     print gridinfo.getGridInfo()["gridnick"]
     regions = gridinfo.getRegions()
     for id in regions:

@@ -53,8 +53,11 @@ class SimConnection(object):
 
 
 if __name__ == "__main__":
+    import sys
     con = SimConnection()
     print con.connect("http://127.0.0.1:9000")
+    print con._con.get_user_by_uuid({"avatar_uuid":"7a4ebc0f-cbde-4904-a0e6-ab9b5295d7e0"})
+    sys.exit()
     #a = con._con.search_for_region_by_name({"name":"Taiga"})
     #print con._con.user_alert({"name":"Taiga"})
     #print con._con.check({})

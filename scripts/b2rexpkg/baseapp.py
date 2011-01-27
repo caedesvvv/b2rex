@@ -145,7 +145,7 @@ class BaseApplication(object):
         Add a button to the interface. This function prelinks
         the button to an action on this clss.
         """
-        cb = getattr(self, 'on' + button_name + 'Action')
+        cb = getattr(self, 'on' + button_name.replace(" ", "") + 'Action')
         return layout.addWidget(Button(self.CallbackAction(cb),
                            button_name, [100, 20], tooltip),
                            button_name + 'Button')
