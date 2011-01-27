@@ -151,7 +151,13 @@ class Importer(object):
         if not mesh:
             print "error loading",scenegroup["asset"]
             return
-        new_mesh = Blender.NMesh.New(asset["name"])
+        try:
+            new_mesh = Blender.NMesh.GetRaw(asset["name"])
+            new_mesh.faces = []
+            new_mesh.verts = []
+            new_mesh.materials = []
+        except:
+            new_mesh = Blender.NMesh.New(asset["name"])
         self._imported_assets[scenegroup["asset"]] = new_mesh
         for vertex, vbuffer, indices, materialName in mesh:
             self.import_submesh(new_mesh, vertex, vbuffer, indices, materialName)
