@@ -1,5 +1,5 @@
 """
-Class to get grid info from opensim
+Import sim data into Blender.
 """
 
 from siminfo import GridInfo
@@ -35,6 +35,11 @@ class Importer(object):
         self.init_structures()
 
     def init_structures(self):
+        """
+        Initialize importer caches.
+
+        Can be called to avoid caching of results.
+        """
         self._imported_assets = {}
         self._imported_materials = {}
         self._imported_ogre_materials = {}
@@ -45,6 +50,9 @@ class Importer(object):
         self._total = {"objects":{},"meshes":{},"materials":{},"textures":{}}
 
     def import_texture(self, texture):
+        """
+        Import the given texture from opensim.
+        """
         if texture in self._imported_assets:
             return self._imported_assets[texture]
         else:
@@ -79,6 +87,9 @@ class Importer(object):
                         print "error opening:", dest
 
     def create_blender_material(self, ogremat, mat):
+        """
+        Create a blender material from ogre format.
+        """
         textures = ogremat.textures
         bmat = None
         idx = 0
@@ -122,6 +133,9 @@ class Importer(object):
         return bmat
 
     def import_material(self, material, retries):
+        """
+        Import a material from opensim.
+        """
         btex = None
         bmat = None
         gridinfo = self.gridinfo
@@ -141,6 +155,9 @@ class Importer(object):
         return bmat
 
     def import_mesh(self, scenegroup):
+        """
+        Import mesh object from opensim scene.
+        """
         if scenegroup["asset"] in self._imported_assets:
             return self._imported_assets[scenegroup["asset"]]
         asset = self.gridinfo.getAsset(scenegroup["asset"])
@@ -164,6 +181,9 @@ class Importer(object):
         return new_mesh
 
     def import_submesh(self, new_mesh, vertex, vbuffer, indices, materialName):
+        """
+        Import submesh info and fill blender face and vertex information.
+        """
         vertex_legend = get_vertex_legend(vertex)
         pos_offset = vertex_legend[VES_POSITION][1]
         no_offset = vertex_legend[VES_NORMAL][1]
@@ -227,6 +247,9 @@ class Importer(object):
 
     def import_object(self, scenegroup, offset_x=128.0, offset_y=128.0,
                       offset_z=20.0):
+        """
+        Import object properties and create the blender mesh object.
+        """
         pos = parse_vector(scenegroup["position"])
         scale = parse_vector(scenegroup["scale"])
         obj = self.find_with_uuid(scenegroup["id"], Blender.Object.Get,
@@ -253,6 +276,9 @@ class Importer(object):
     def import_group(self, groupid, scenegroup, retries,
                      offset_x=128.0, offset_y=128.0, offset_z=20.0,
                      load_materials=True):
+        """
+        Import the given group into blender.
+        """
         materials = []
         if load_materials:
            for material in scenegroup["materials"].keys():
@@ -298,20 +324,32 @@ class Importer(object):
                 sys.stderr.flush()
 
     def check_uuid(self, obj, groupid):
+        """
+        Check if the given object has the given groupid.
+        """
         if self.get_uuid(obj) == groupid:
             return True
 
     def get_uuid(self, obj):
+        """
+        Get the uuid from the given object.
+        """
         if "opensim" in obj.properties:
             if "uuid" in obj.properties["opensim"]:
                 return obj.properties['opensim']['uuid']
 
     def set_uuid(self, obj, obj_uuid):
+        """
+        Set the uuid for the given blender object.
+        """
         if not "opensim" in obj.properties:
             obj.properties["opensim"] = {}
         obj.properties["opensim"]["uuid"] = obj_uuid
 
     def find_with_uuid(self, groupid, getter, section):
+        """
+        Find the object with the given uuid.
+        """
         if self._total[section]:
             pass
         else:
@@ -325,6 +363,9 @@ class Importer(object):
             return getter(self._total[section][groupid])
 
     def check_group(self, groupid, scenegroup):
+        """
+        Run a check on the group, to see if it exists in blender.
+        """
         if self.find_with_uuid(groupid, Blender.Object.Get, "objects"):
             self._found["objects"] += 1
         self._total_server["objects"] += 1
@@ -338,6 +379,10 @@ class Importer(object):
         self._total_server["meshes"] += 1
 
     def check_region(self, region_id, action="check"):
+        """
+        Run a check on the region, Checks correspondence of objects between
+        Blender and OpenSim and returns a formatted result as an array.
+        """
         self.init_structures()
         con = SimConnection()
         con.connect(self.gridinfo._url)
@@ -357,6 +402,10 @@ class Importer(object):
         return report
 
     def sync_region(self, region_id):
+        """
+        Sync the given region. Downloads information for the given objects from
+        opensim.
+        """
         self.init_structures()
         con = SimConnection()
         con.connect(self.gridinfo._url)
@@ -371,6 +420,9 @@ class Importer(object):
                     self.import_group(obj_uuid, scenedata[obj_uuid], 10)
 
     def import_region(self, region_id, action="import"):
+        """
+        Import the given region into blender.
+        """
         self.init_structures()
         con = SimConnection()
         con.connect(self.gridinfo._url)
