@@ -117,6 +117,9 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
         zfile.close()
 
     def onCheckAction(self):
+        """
+        Check region contents against server.
+        """
         text = self.check_region(self.region_uuid)
         self.regionInfoLayout = VerticalLayout()
         self.regionLayout.addWidget(self.regionInfoLayout, "regionInfoLayout")
@@ -126,11 +129,18 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
         Blender.Draw.Draw()
 
     def onSyncAction(self):
+        """
+        Sync selected region contents against server.
+        """
         text = self.sync_region(self.region_uuid)
         Blender.Draw.Draw()
 
     def onImportAction(self):
+        """
+        Import region from OpenSim.
+        """
         text = self.import_region(self.region_uuid)
+        self.addStatus("Scene imported " + self.region_uuid)
         Blender.Draw.Draw()
 
     def onClearAction(self):
@@ -193,6 +203,9 @@ class RealxtendExporterApplication(Exporter, Importer, BaseApplication):
         self.addStatus("Exported to " + dest_file)
 
     def getExportDir(self):
+        """
+        Get export directory.
+        """
         export_dir = self.exportSettings.path
         if not export_dir:
             export_dir = tempfile.tempdir
