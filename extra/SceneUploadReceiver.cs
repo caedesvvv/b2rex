@@ -102,6 +102,7 @@ namespace OgreSceneImporter
 		if (!m_initialised) {
             	    MainServer.Instance.AddXmlRPCHandler("ogrescene_upload", XmlRpcHandler);
             	    MainServer.Instance.AddXmlRPCHandler("ogrescene_list", ListXmlRpcHandler);
+            	    MainServer.Instance.AddXmlRPCHandler("ogrescene_getasset", GetAssetXmlRpcHandler);
             	    MainServer.Instance.AddXmlRPCHandler("ogrescene_clear", ClearXmlRpcHandler);
 		    m_initialised = true;
 		}
@@ -134,6 +135,34 @@ namespace OgreSceneImporter
 		}
 		return null;
 	}
+        public XmlRpcResponse GetAssetXmlRpcHandler(XmlRpcRequest request, IPEndPoint client)
+	{
+  	    // AuthClient.VerifySession(GetUserServerURL(userID), userID, sessionID);
+            XmlRpcResponse response = new XmlRpcResponse();
+            Hashtable requestData = (Hashtable)request.Params[0];
+            Hashtable resp = new Hashtable();
+	    Hashtable result = new Hashtable();
+            if (requestData.ContainsKey("assetid"))
+	    {
+		    AssetBase asset = m_scene.AssetService.Get(requestData["assetid"].ToString());
+		    result["asset"] = asset.Data;
+		    result["name"] = asset.Name;
+		    result["type"] = asset.Type.ToString();
+            	    resp["res"] = result;
+		    // m_scene.DeleteAllSceneObjects();
+	    }
+	    else
+	    {
+		    resp["success"] = false;
+		    resp["error"] = "no RegionID provided";
+		    response.Value = resp;
+                    return response;
+	    }
+	    // return ok;
+            resp["success"] = true;
+	    response.Value = resp;
+	    return response;
+	}
 
         public XmlRpcResponse ClearXmlRpcHandler(XmlRpcRequest request, IPEndPoint client)
 	{
@@ -155,7 +184,6 @@ namespace OgreSceneImporter
                     return response;
 	    }
 	    // return ok;
-	    m_log.Info("Region Cleared: " + requestData["RegionID"].ToString());
             resp["success"] = true;
 	    response.Value = resp;
 	    return response;
@@ -178,24 +206,34 @@ namespace OgreSceneImporter
 		    {
 		    	Hashtable sogdata = new Hashtable();
 			sogdata["name"] = e.Name;
+			sogdata["primname"] = e.RootPart.Name;
 			sogdata["groupid"] = e.GroupID.ToString();
 			sogdata["primcount"] = e.PrimCount.ToString();
 			sogdata["owner"] = e.OwnerID.ToString();
 			sogdata["part"] = e.GetFromItemID().ToString();
+			sogdata["rotation"] = e.RootPart.GetWorldRotation().ToString();
+			sogdata["position"] = e.AbsolutePosition.ToString();
+			sogdata["scale"] = e.GroupScale().ToString();
 
                         RexObjectProperties robject = rexObjects.GetObject(e.RootPart.UUID);
                         sogdata["asset"] = robject.RexMeshUUID.ToString();
+                        sogdata["drawtype"] = robject.RexDrawType.ToString();
                         sogdata["distance"] = robject.RexDrawDistance.ToString();
 			if (robject.RexMaterials.Count > 0) {
 				Hashtable materials = new Hashtable();
 				foreach (uint matindex in robject.RexMaterials.Keys) {
 					materials[robject.RexMaterials[matindex].AssetID.ToString()] = robject.RexMaterials[matindex].AssetURI;
-					AssetBase asset = m_scene.AssetService.Get(robject.RexMaterials[matindex].AssetID.ToString());
-					materials[robject.RexMaterials[matindex].AssetID.ToString()+"_d"] = asset.Description;
-					materials[robject.RexMaterials[matindex].AssetID.ToString()+"_data"] = (byte[])asset.Data;
 				}
 				sogdata["materials"] = materials;
 			}
+				Hashtable parts = new Hashtable();
+				foreach (UUID prim_uuid in e.Children.Keys) {
+					SceneObjectPart child = e.Children[prim_uuid];
+					RexObjectProperties child_robject = rexObjects.GetObject(child.UUID);
+					parts[prim_uuid.ToString()] = child_robject.RexMeshUUID.ToString();
+				}
+				sogdata["parts"] = parts;
+
  //                       robject.RexCastShadows = ent.CastShadows;
    //                     robject.RexDrawType = 1;
 
@@ -261,7 +299,17 @@ namespace OgreSceneImporter
 
 
 		OgreSceneImportModule osi = (OgreSceneImportModule)m_scene.Modules["OgreSceneImportModule"];
-		osi.ImportUploadedOgreScene("/tmp/foo/" + packName, m_scene);
+		try
+		{
+			osi.ImportUploadedOgreScene("/tmp/foo/" + packName, m_scene);
+		}
+		catch (Exception)
+		{
+	        	m_log.Error("[SCENEUPLOADER] Error importing uploaded scene " + packName);
+			Directory.Delete("/tmp/foo", true);
+			File.Delete("/tmp/test.zip");
+			throw;
+		}
 
 	        m_log.Info("[SCENEUPLOADER] Cleaning up");
 		Directory.Delete("/tmp/foo", true);
