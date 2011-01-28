@@ -11,11 +11,17 @@ class RestConnector(object):
     def __init__(self):
         self._url = None
     def connect(self, url, username="", password=""):
+        """
+        Connect to the server.
+        """
         self._url = url
         self._username = username
         self._password = password
         self._connect()
     def _connect(self):
+        """
+        Internal function connecting to the server.
+        """
         username = self._username
         password = self._password
         if username and password:
@@ -27,17 +33,29 @@ class RestConnector(object):
         else:
             self.opener = urllib2.build_opener()
     def httpGet(self, relative_url):
+        """
+        Get an url using GET method.
+        """
         self._connect()
         req = urllib2.Request(self._url + relative_url)
         req = self.opener.open(req)
         return req.read()
     def httpXmlGet(self, relative_url):
+        """
+        Get an url using GET method and decode incoming xml into an ET.
+        """
         data = self.httpGet(relative_url)
         return ET.fromstring(data)
     def httpObjGet(self, relative_url, subst=""):
+        """
+        Get an url using GET method and decode incoming xml into a dict.
+        """
         xmldata = self.httpXmlGet(relative_url)
         return self.mapToDict(xmldata, subst)
     def mapToDict(self, xmldata, subst=""):
+        """
+        Map the given xml to a dictionary.
+        """
         obj = {}
         for prop in xmldata.getchildren():
             obj[prop.tag[len(subst):]] = prop.text

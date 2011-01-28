@@ -143,7 +143,8 @@ class BaseApplication(object):
     def addCallbackButton(self, button_name, layout, tooltip=""):
         """
         Add a button to the interface. This function prelinks
-        the button to an action on this clss.
+        the button to a function in the class, called like
+        "on" + button_name + "Action"
         """
         cb = getattr(self, 'on' + button_name.replace(" ", "") + 'Action')
         return layout.addWidget(Button(self.CallbackAction(cb),
