@@ -1,3 +1,6 @@
+"""
+Ogre binary format serializer.
+"""
 import struct
 
 class Serializer(object):
