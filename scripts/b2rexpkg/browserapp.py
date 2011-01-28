@@ -1,3 +1,7 @@
+"""
+Region asset browser.
+"""
+
 from .baseapp import BaseApplication
 from .baseapp import HorizontalLayout, Box, Label, VerticalLayout
 from .baseapp import IMMEDIATE
@@ -13,6 +17,9 @@ class RealxtendBrowserApplication(BaseApplication):
         self.addStatus("b2rex started")
 
     def setRegion(self, regionuuid):
+        """
+        Region set from the interface.
+        """
         self.region_uuid = regionuuid
         hLayout = HorizontalLayout()
         vLayout = VerticalLayout()
@@ -32,6 +39,9 @@ class RealxtendBrowserApplication(BaseApplication):
         self.browserInitialized = False
 
     def setScene(self):
+        """
+        Go to the browser scene, and create it if necessary.
+        """
         try:
             self.scene = Blender.Scene.Get("b2rexbrowser")
         except:
@@ -39,10 +49,16 @@ class RealxtendBrowserApplication(BaseApplication):
         self.scene.makeCurrent()
 
     def clearScene(self):
+        """
+        Clear the browser scene.
+        """
         for obj in list(self.scene.objects):
             self.scene.unlink(obj)
 
     def initializeBrowser(self):
+        """
+        Initialize the browser for a region.
+        """
         self.importer = Importer(self.gridinfo)
         con = SimConnection()
         con.connect(self.gridinfo._url)
@@ -54,6 +70,9 @@ class RealxtendBrowserApplication(BaseApplication):
         self.browserInitialized = True
 
     def loadGroup(self, name, group, load_materials=False):
+        """
+        Load a group for viewing.
+        """
         self.setScene()
         self.clearScene()
         outLayout = VerticalLayout()
@@ -71,21 +90,33 @@ class RealxtendBrowserApplication(BaseApplication):
            obj.select(True)
 
     def onLoadMaterialAction(self):
+        """
+        Load the material for current object.
+        """
         self.loadGroupIdx("texture", True)
 
     def onNextAction(self):
+        """
+        Load the next object in the region.
+        """
         if not self.browserInitialized:
             self.initializeBrowser()
         self.browserIdx += 1
         self.loadGroupIdx("previous")
 
     def onPreviousAction(self):
+        """
+        Load the previous object in the region.
+        """
         if not self.browserInitialized:
             self.initializeBrowser()
         self.browserIdx -= 1
         self.loadGroupIdx("next")
 
     def loadGroupIdx(self, comment, load_materials=False):
+        """
+        Load the current object from the region.
+        """
         self.browserIdx = self.browserIdx % len(self.browserkeys)
         name = self.browserkeys[self.browserIdx]
         group = self.scenedata[name]
